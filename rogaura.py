@@ -4,6 +4,8 @@
 """
 Control the RGB keyboard on the Asus ROG Strix GL503VD.
 
+sudo apt install python3-usb
+
 rogaura.py
 (c) Will Roberts  11 March, 2019
 """
@@ -130,6 +132,15 @@ def rainbow():
 def red():
     return single_static(Color.fromhexstr('ff0000'))
 
+def green():
+    return single_static(Color.fromhexstr('00ff00'))
+
+def yellow():
+    return single_static(Color.fromhexstr('ffff00'))
+
+def blue():
+    return single_static(Color.fromhexstr('0000ff'))
+
 def white():
     return single_static(Color.fromhexstr('ffffff'))
 
@@ -141,6 +152,9 @@ COLOR_FUNCS = [
     multi_breathing,
     rainbow,
     red,
+    green,
+    yellow,
+    blue,
     white,
 ]
 
