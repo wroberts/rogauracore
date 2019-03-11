@@ -42,7 +42,7 @@ def toarray(sval):
 
 SET_MESSAGE = toarray('5db5000000000000000000000000000000')
 
-def acquire():
+def acquire_usb():
     dev = usb.core.find(idVendor=ASUS_VENDOR_ID, idProduct=ASUS_PRODUCT_ID)
     if dev is None:
         print('Could not find ASUS RGB keyboard.')
@@ -72,7 +72,7 @@ def acquire():
 
     return dev, iface, active_iface
 
-def release(dev, iface, active_iface):
+def release_usb(dev, iface, active_iface):
     usb.util.release_interface(dev, iface)
     if active_iface:
         dev.attach_kernel_driver(iface)
@@ -86,9 +86,6 @@ def single_static(color):
     return [arr, SET_MESSAGE]
 
 def single_breathing(color1, color2, speed):
-    # ('breathe slow', '5db3000108fff0e10001ff000000000000'),
-    # ('breathe med ', '5db3000108fff0eb0001ff000000000000'),
-    # ('breathe fast', '5db3000108fff0f50001ff000000000000')]
     arr = toarray('5db3000108fff0eb0001ff000000000000')
     arr[4] = color1.red
     arr[5] = color1.green
@@ -100,18 +97,11 @@ def single_breathing(color1, color2, speed):
     return [arr, SET_MESSAGE]
 
 def single_colorcycle(speed):
-    # ('rainbow cycle slow', '5db30002ff0000e1000000000000000000'),
-    # ('rainbow cycle med ', '5db30002ff0000eb000000000000000000'),
-    # ('rainbow cycle fast', '5db30002ff0000f5000000000000000000')
     arr = toarray('5db30002ff0000eb000000000000000000')
     arr[7] = speed.bytevalue
     return [arr, SET_MESSAGE]
 
 def multi_static(color1, color2, color3, color4):
-    # '5db30100ff0000eb000000000000000000',
-    # '5db30200ffff00eb000000000000000000',
-    # '5db3030000ffffeb000000000000000000',
-    # '5db30400ff00ffeb000000000000000000',
     result = []
     for idx, color in enumerate([color1, color2, color3, color4], 1):
         arr = toarray('5db30100ff0000eb000000000000000000')
@@ -123,11 +113,6 @@ def multi_static(color1, color2, color3, color4):
     return result + [SET_MESSAGE]
 
 def multi_breathing(color1, color2, color3, color4, speed):
-    # '5db30101ff0000eb000000000000000000',
-    # '5db30201ffff00eb000000000000000000',
-    # '5db3030100ffffeb000000000000000000',
-    # '5db30401ff00ffeb000000000000000000',
-    # '5db5000000000000000000000000000000'
     result = []
     for idx, color in enumerate([color1, color2, color3, color4], 1):
         arr = toarray('5db30101ff0000eb000000000000000000')
@@ -207,7 +192,7 @@ def main():
         print(e)
         sys.exit(1)
 
-    dev, iface, active_iface = acquire()
+    dev, iface, active_iface = acquire_usb()
 
     for message in messages:
         bmRequestType = 0x21
@@ -218,12 +203,10 @@ def main():
         try:
             dev.ctrl_transfer(bmRequestType, bRequest, wValue, wIndex, message)
         except usb.USBError as e:
-            release(dev, iface, active_iface)
+            release_usb(dev, iface, active_iface)
             raise e
 
-    release(dev, iface, active_iface)
+    release_usb(dev, iface, active_iface)
 
 if __name__ == '__main__':
     main()
-
-sys.exit(0)
