@@ -1,3 +1,9 @@
+# Demo
+
+sudo python3 rogaura.py single_breathing 08fff0 ff0000 1
+sudo python3 rogaura.py single_colorcycle 2
+sudo python3 rogaura.py multi_breathing ff0000 ffffff ffffff ff0000 2
+
 # Notes
 
 All control transfer packets defined in
