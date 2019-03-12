@@ -48,6 +48,7 @@ def toarray(sval):
 
 
 SET_MESSAGE = toarray("5db5000000000000000000000000000000")
+APPLY_MESSAGE = toarray("5db4000000000000000000000000000000")
 
 
 def acquire_usb():
@@ -93,7 +94,7 @@ def single_static(color):
     arr[4] = color.red
     arr[5] = color.green
     arr[6] = color.blue
-    return [arr, SET_MESSAGE]
+    return [arr, SET_MESSAGE, APPLY_MESSAGE]
 
 
 def single_breathing(color1, color2, speed):
@@ -105,13 +106,13 @@ def single_breathing(color1, color2, speed):
     arr[11] = color2.green
     arr[12] = color2.blue
     arr[7] = speed.bytevalue
-    return [arr, SET_MESSAGE]
+    return [arr, SET_MESSAGE, APPLY_MESSAGE]
 
 
 def single_colorcycle(speed):
     arr = toarray("5db30002ff0000eb000000000000000000")
     arr[7] = speed.bytevalue
-    return [arr, SET_MESSAGE]
+    return [arr, SET_MESSAGE, APPLY_MESSAGE]
 
 
 def multi_static(color1, color2, color3, color4):
@@ -123,7 +124,7 @@ def multi_static(color1, color2, color3, color4):
         arr[5] = color.green
         arr[6] = color.blue
         result.append(arr)
-    return result + [SET_MESSAGE]
+    return result + [SET_MESSAGE, APPLY_MESSAGE]
 
 
 def multi_breathing(color1, color2, color3, color4, speed):
@@ -136,7 +137,7 @@ def multi_breathing(color1, color2, color3, color4, speed):
         arr[6] = color.blue
         arr[7] = speed.bytevalue
         result.append(arr)
-    return result + [SET_MESSAGE]
+    return result + [SET_MESSAGE, APPLY_MESSAGE]
 
 
 def rainbow():
