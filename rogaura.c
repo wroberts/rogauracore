@@ -257,9 +257,9 @@ int parseColor(char *arg, Color *pResult) {
     }
     v = (uint32_t)strtol(arg, 0, 16);
     if (errno == ERANGE) goto fail;
-    pResult->nRed = (v >> 16) & 0xFF;
-    pResult->nGreen = (v >> 8) & 0xFF;
-    pResult->nBlue = v & 0xFF;
+    pResult->nRed = (v >> 16) & 0xff;
+    pResult->nGreen = (v >> 8) & 0xff;
+    pResult->nBlue = v & 0xff;
     D(printf("interpreted color %d %d %d\n", pResult->nRed, pResult->nGreen, pResult->nBlue));
     return 0;
 fail:
@@ -317,13 +317,13 @@ int parseArguments(int argc, char **argv, Messages *messages) {
         }
         printf(":\n   rogaura %s ", pDesiredFunc->szName);
         for (int i = 0; i < pDesiredFunc->nColors; i++) {
-            printf("color%d ", i+1);
+            printf("COLOR%d ", i+1);
         }
         if (pDesiredFunc->nSpeed) {
-            printf("speed");
+            printf("SPEED");
         }
-        printf("\n\ncolor arguments should be given as hex values like ff0000\n");
-        printf("speed argument should be given as an integer: 1, 2, or 3\n");
+        printf("\n\nCOLOR argument(s) should be given as hex values like ff0000\n");
+        printf("SPEED argument should be given as an integer: 1, 2, or 3\n");
         return -1;
     }
     // parse the argument values
@@ -349,7 +349,7 @@ int parseArguments(int argc, char **argv, Messages *messages) {
         D(printf("message %d: ", i));
         for (int j = 0; j < MESSAGE_LENGTH; j++)
         {
-            D(printf("%02x ", messages->messages[i][j] & 0xff));
+            D(printf("%02x ", messages->messages[i][j]));
         }
         D(printf("\n"));
     }
@@ -368,7 +368,7 @@ const int NUM_ASUS_PRODUCTS = (int)(sizeof(ASUS_PRODUCT_IDS) / sizeof(ASUS_PRODU
 int checkDevice(libusb_device *pDevice) {
     struct libusb_device_descriptor devDesc;
     libusb_get_device_descriptor(pDevice, &devDesc);
-    printf("   Checking device %04x:%04x, address %d\n",
+    printf("Checking device %04x:%04x, address %d\n",
            devDesc.idVendor, devDesc.idProduct,
            libusb_get_device_address(pDevice));
     if (devDesc.idVendor == ASUS_VENDOR_ID) {
