@@ -6,7 +6,7 @@ Control the RGB keyboard on the Asus ROG Strix GL503VD.
 
 sudo apt install python3-usb
 
-rogaura.py
+rogauracore.py
 (c) Will Roberts  11 March, 2019
 """
 
@@ -183,11 +183,11 @@ COLOR_FUNCS = [
     white,
 ]
 
-USAGE = """rogaura.py -- Asus Rog RGB keyboard control
+USAGE = """rogauracore.py -- Asus Rog RGB keyboard control
 (c) 2019 Will Roberts
 
 Syntax:
-    python3 rogaura.py MODE [args...]
+    python3 rogauracore.py MODE [args...]
 
 MODE is one of {}.
 """
