@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <libusb-1.0/libusb.h>
 
 #define MESSAGE_LENGTH 17
@@ -31,13 +32,9 @@
 #define MAX_NUM_COLORS 4
 #define MAX_FUNCNAME_LEN 32
 
-// https://stackoverflow.com/a/14251257/1062499
-#define DEBUG
-#ifdef DEBUG
-#define D(x) x
-#else
-#define D(x)
-#endif
+// verbose output
+int verbose = 0;
+#define V(x) if (verbose) { x; }
 
 
 // ------------------------------------------------------------
@@ -92,7 +89,7 @@ void initMessage(uint8_t *msg) {
 }
 
 void single_static(Arguments *args, Messages *outputs) {
-    D(printf("single_static\n"));
+    V(printf("single_static\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
     initMessage(m);
@@ -102,7 +99,7 @@ void single_static(Arguments *args, Messages *outputs) {
 }
 
 void single_breathing(Arguments *args, Messages *outputs) {
-    D(printf("single_breathing\n"));
+    V(printf("single_breathing\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
     initMessage(m);
@@ -118,7 +115,7 @@ void single_breathing(Arguments *args, Messages *outputs) {
 }
 
 void single_colorcycle(Arguments *args, Messages *outputs) {
-    D(printf("single_colorcycle\n"));
+    V(printf("single_colorcycle\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
     initMessage(m);
@@ -128,7 +125,7 @@ void single_colorcycle(Arguments *args, Messages *outputs) {
 }
 
 void multi_static(Arguments *args, Messages *outputs) {
-    D(printf("multi_static\n"));
+    V(printf("multi_static\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
         uint8_t *m = outputs->messages[i];
@@ -142,7 +139,7 @@ void multi_static(Arguments *args, Messages *outputs) {
 }
 
 void multi_breathing(Arguments *args, Messages *outputs) {
-    D(printf("multi_breathing\n"));
+    V(printf("multi_breathing\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
         uint8_t *m = outputs->messages[i];
@@ -249,7 +246,7 @@ void usage() {
 }
 
 int parseColor(char *arg, Color *pResult) {
-    D(printf("parse color %s\n", arg));
+    V(printf("parse color %s\n", arg));
     uint32_t v = 0;
     if (strlen(arg) != 6) goto fail;
     for (int i = 0; i < 6; ++i) {
@@ -260,20 +257,20 @@ int parseColor(char *arg, Color *pResult) {
     pResult->nRed = (v >> 16) & 0xff;
     pResult->nGreen = (v >> 8) & 0xff;
     pResult->nBlue = v & 0xff;
-    D(printf("interpreted color %d %d %d\n", pResult->nRed, pResult->nGreen, pResult->nBlue));
+    V(printf("interpreted color %d %d %d\n", pResult->nRed, pResult->nGreen, pResult->nBlue));
     return 0;
 fail:
-    printf("Could not interpret color parameter value %s\n", arg);
-    printf("Please give this value as a six-character hex string like ff0000.\n");
+    fprintf(stderr, "Could not interpret color parameter value %s\n", arg);
+    fprintf(stderr, "Please give this value as a six-character hex string like ff0000.\n");
     return -1;
 }
 
 int parseSpeed(char *arg, Speed *pResult) {
-    D(printf("parse speed %s\n", arg));
+    V(printf("parse speed %s\n", arg));
     long nSpeed = strtol(arg, 0, 0);
     if (errno == ERANGE || nSpeed < 1 || nSpeed > 3) {
-        printf("Could not interpret speed parameter value %s\n", arg);
-        printf("Please give this value as an integer: 1 (slow), 2 (medium), or 3 (fast).\n");
+        fprintf(stderr, "Could not interpret speed parameter value %s\n", arg);
+        fprintf(stderr, "Please give this value as an integer: 1 (slow), 2 (medium), or 3 (fast).\n");
         return -1;
     }
     *pResult = (Speed)nSpeed;
@@ -282,13 +279,28 @@ int parseSpeed(char *arg, Speed *pResult) {
 
 int parseArguments(int argc, char **argv, Messages *messages) {
     int                   nRetval;
-    const FunctionRecord *pDesiredFunc  = 0;
     Arguments             args;
+    int                   nArgs         = 0;
+    const FunctionRecord *pDesiredFunc  = 0;
     int                   nColors       = 0;
+
+    // check for command line options
+    while ((nRetval = getopt(argc, argv, "v")) != -1) {
+        switch (nRetval) {
+        case 'v':
+            verbose = 1;
+            break;
+        default: /* '?' */
+            usage();
+            return -1;
+        }
+    }
+    nArgs = argc - optind;
+
     // identify the function the user has asked for
-    if (argc > 1) {
+    if (nArgs > 0) {
         for (int i = 0; i < NUM_FUNCTION_RECORDS; ++i) {
-            if (!strncmp(argv[1], FUNCTION_RECORDS[i].szName, MAX_FUNCNAME_LEN)) {
+            if (!strncmp(argv[optind], FUNCTION_RECORDS[i].szName, MAX_FUNCNAME_LEN)) {
                 pDesiredFunc = &(FUNCTION_RECORDS[i]);
                 break;
             }
@@ -299,7 +311,7 @@ int parseArguments(int argc, char **argv, Messages *messages) {
         return -1;
     }
     // check that the function signature is satisfied
-    if (argc != (1 + 1 + pDesiredFunc->nColors + pDesiredFunc->nSpeed)) {
+    if (nArgs != (1 + pDesiredFunc->nColors + pDesiredFunc->nSpeed)) {
         usage();
         printf("\nFunction %s takes ", pDesiredFunc->szName);
         if (pDesiredFunc->nColors > 0) {
@@ -327,7 +339,7 @@ int parseArguments(int argc, char **argv, Messages *messages) {
         return -1;
     }
     // parse the argument values
-    for (int i = 2; i < argc; ++i) {
+    for (int i = optind + 1; i < argc; ++i) {
         if (nColors < pDesiredFunc->nColors) {
             nRetval = parseColor(argv[i], &(args.colors[nColors]));
             if (nRetval < 0) return -1;
@@ -337,21 +349,21 @@ int parseArguments(int argc, char **argv, Messages *messages) {
             if (nRetval < 0) return -1;
         }
     }
-    D(printf("args:\n"));
+    V(printf("args:\n"));
     for (int i = 0; i < MAX_NUM_COLORS; ++i) {
-        D(printf("color%d %d %d %d\n", i + 1, args.colors[i].nRed, args.colors[i].nGreen, args.colors[i].nBlue));
+        V(printf("color%d %d %d %d\n", i + 1, args.colors[i].nRed, args.colors[i].nGreen, args.colors[i].nBlue));
     }
-    D(printf("speed %d\n", args.speed));
+    V(printf("speed %d\n", args.speed));
     // call the function the user wants
     pDesiredFunc->function(&args, messages);
-    D(printf("constructed %d messages:\n", messages->nMessages));
+    V(printf("constructed %d messages:\n", messages->nMessages));
     for (int i = 0; i < messages->nMessages; ++i) {
-        D(printf("message %d: ", i));
+        V(printf("message %d: ", i));
         for (int j = 0; j < MESSAGE_LENGTH; j++)
         {
-            D(printf("%02x ", messages->messages[i][j]));
+            V(printf("%02x ", messages->messages[i][j]));
         }
-        D(printf("\n"));
+        V(printf("\n"));
     }
     return 0;
 }
@@ -368,9 +380,9 @@ const int NUM_ASUS_PRODUCTS = (int)(sizeof(ASUS_PRODUCT_IDS) / sizeof(ASUS_PRODU
 int checkDevice(libusb_device *pDevice) {
     struct libusb_device_descriptor devDesc;
     libusb_get_device_descriptor(pDevice, &devDesc);
-    printf("Checking device %04x:%04x, address %d\n",
-           devDesc.idVendor, devDesc.idProduct,
-           libusb_get_device_address(pDevice));
+    V(printf("Checking device %04x:%04x, address %d\n",
+             devDesc.idVendor, devDesc.idProduct,
+             libusb_get_device_address(pDevice)));
     if (devDesc.idVendor == ASUS_VENDOR_ID) {
         for (int i = 0; i < NUM_ASUS_PRODUCTS; ++i)
         {
@@ -392,7 +404,7 @@ int controlTransfer(libusb_device_handle *pHandle, unsigned char *sData, uint16_
         0 /* standard device timeout */
         );
     if (nRetval < 0) {
-        printf("Control transfer error: %s\n", libusb_error_name(nRetval));
+        fprintf(stderr, "Control transfer error: %s\n", libusb_error_name(nRetval));
     }
     return nRetval;
 }
@@ -407,62 +419,62 @@ int handleUsb(Messages *pMessages) {
     uint8_t                          bInterfaceNumber = 0;
     struct libusb_config_descriptor *pConfig          = 0;
     // Try to initialise the libusb library
-    D(printf("Initialising libusb\n"));
+    V(printf("Initialising libusb\n"));
     if (libusb_init(0) < 0) {
-        printf("Could not initialise libusb.\n");
+        fprintf(stderr, "Could not initialise libusb.\n");
         nRetval = -1; goto exit;
     }
-    D(printf("Initialised libusb.\n"));
+    V(printf("Initialised libusb.\n"));
 
     // Lets try to find our HID device that controls backlight LEDs.
     nDevices = libusb_get_device_list(0, &deviceList);
     if (nDevices < 0) {
-        printf("Could not fetch usb device list.\n");
+        fprintf(stderr, "Could not fetch USB device list.\n");
         nRetval = -1; goto deinit;
     }
-    D(printf("Found %d USB devices.\n", nDevices));
+    V(printf("Found %d USB devices.\n", nDevices));
     for (int i = 0; i < nDevices; i++) {
         device = deviceList[i];
         if (checkDevice(device)) {
-            D(printf("Found ROG Aura Core keyboard.\n"));
+            V(printf("Found ROG Aura Core keyboard.\n"));
             auraCoreDevice = device;
             break;
         }
     }
     if (!auraCoreDevice) {
-        printf("Could not find ROG Aura Core keyboard.\n");
+        fprintf(stderr, "Could not find ROG Aura Core keyboard.\n");
         nRetval = -1; goto freelist;
     }
     nRetval = libusb_open(auraCoreDevice, &pHandle);
     if (nRetval < 0) {
-        printf("Could not open ROG Aura Core keyboard: %s\n", libusb_error_name(nRetval));
+        fprintf(stderr, "Could not open ROG Aura Core keyboard: %s\n", libusb_error_name(nRetval));
         goto freelist;
     }
-    D(printf("Opened USB device.\n"));
+    V(printf("Opened USB device.\n"));
 
     // Detach kernel drivers before USB communication
     nRetval = libusb_set_auto_detach_kernel_driver(pHandle, 1);
     if (nRetval < 0) {
-        printf("Could not set auto detach kernel mode: %s\n",
-               libusb_error_name(nRetval));
+        fprintf(stderr, "Could not set auto detach kernel mode: %s\n",
+                libusb_error_name(nRetval));
     } else {
-        D(printf("Auto detach kernel mode set.\n"));
+        V(printf("Auto detach kernel mode set.\n"));
     }
 
     // Get configuration descriptor
     nRetval = libusb_get_active_config_descriptor(auraCoreDevice, &pConfig);
     if (nRetval < 0) {
-        printf("Could not get configuration descriptor: %s.\n", libusb_error_name(nRetval));
+        fprintf(stderr, "Could not get configuration descriptor: %s.\n", libusb_error_name(nRetval));
         goto close;
     }
 
     // We want to claim the first interface on the device
     if (pConfig->bNumInterfaces == 0) {
-        printf("No interfaces defined on the USB device.");
+        fprintf(stderr, "No interfaces defined on the USB device.");
         nRetval = -1; goto freedesc;
     }
     if (pConfig->interface[0].num_altsetting == 0) {
-        printf("No interface descriptors for the first interface of the USB device.");
+        fprintf(stderr, "No interface descriptors for the first interface of the USB device.");
         nRetval = -1; goto freedesc;
     }
     bInterfaceNumber = pConfig->interface[0].altsetting[0].bInterfaceNumber;
@@ -470,10 +482,10 @@ int handleUsb(Messages *pMessages) {
     // Claim the interface
     nRetval = libusb_claim_interface(pHandle, bInterfaceNumber);
     if(nRetval < 0) {
-        printf("Could not claim interface: %s.\n", libusb_error_name(nRetval));
+        fprintf(stderr, "Could not claim interface: %s.\n", libusb_error_name(nRetval));
         goto freedesc;
     }
-    D(printf("Claimed interface %d.\n", bInterfaceNumber));
+    V(printf("Claimed interface %d.\n", bInterfaceNumber));
 
     // Send the control messages
     for (int i = 0; i < pMessages->nMessages; ++i) {
