@@ -18,13 +18,32 @@
 
 // sudo apt install libusb-1.0-0 libusb-1.0-0-dev
 
-#include <ctype.h>
-#include <errno.h>
-#include <stdint.h>
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#if STDC_HEADERS
+#  include <stdlib.h>
+#  include <string.h>
+#elif HAVE_STRINGS_H
+#  include <strings.h>
+#endif /*STDC_HEADERS*/
+
+#if HAVE_UNISTD_H
+#  include <unistd.h>
+#endif
+
+#if HAVE_ERRNO_H
+#  include <errno.h>
+#endif /*HAVE_ERRNO_H*/
+#ifndef errno
+/* Some systems #define this! */
+extern int errno;
+#endif
+
+#include <ctype.h>
+#include <stdint.h>
 #include <libusb-1.0/libusb.h>
 
 #define MESSAGE_LENGTH 17
