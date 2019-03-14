@@ -31,3 +31,13 @@ COMMAND should be one of:
    black
    rainbow
 ```
+
+## Building
+
+Clone the github repo and enter the top-level directory.  Then:
+
+```sh
+autoreconf
+./configure
+make
+```
