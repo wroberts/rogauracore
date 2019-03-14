@@ -2,7 +2,7 @@ TARGET   = rogaura
 OBJS     = rogaura.o
 FLAGS    = -g -O0 -Wall
 INCLUDES =
-LIBS     =
+LIBS     = -lusb-1.0
 CC       = gcc
 
 all       : $(TARGET)
