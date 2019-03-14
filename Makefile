@@ -1,5 +1,5 @@
-TARGET   = rogaura
-OBJS     = rogaura.o
+TARGET   = rogauracore
+OBJS     = rogauracore.o
 FLAGS    = -g -O0 -Wall
 INCLUDES =
 LIBS     = -lusb-1.0

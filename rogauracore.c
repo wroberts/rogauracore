@@ -1,5 +1,5 @@
 /**
- * rogaura
+ * rogauracore
  * Copyright (c) 2019 Will Roberts
  *
  * Author:        Will Roberts <wildwilhelm@gmail.com> (WKR)
@@ -13,7 +13,7 @@
  *    (WKR) 13 March 2019
  *          - Boilerplate header added.
  *
- * \file rogaura.c
+ * \file rogauracore.c
  */
 
 // sudo apt install libusb-1.0-0 libusb-1.0-0-dev
@@ -235,10 +235,10 @@ const FunctionRecord FUNCTION_RECORDS[] = {
 const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTION_RECORDS[0]));
 
 void usage() {
-    printf("rogaura - RGB keyboard control for Asus ROG laptops\n");
+    printf("rogauracore - RGB keyboard control for Asus ROG laptops\n");
     printf("(c) 2019 Will Roberts\n\n");
     printf("Usage:\n");
-    printf("   rogaura COMMAND ARGUMENTS\n\n");
+    printf("   rogauracore COMMAND ARGUMENTS\n\n");
     printf("COMMAND should be one of:\n");
     for (int i = 0; i < NUM_FUNCTION_RECORDS; ++i) {
         printf("   %s\n", FUNCTION_RECORDS[i].szName);
@@ -327,7 +327,7 @@ int parseArguments(int argc, char **argv, Messages *messages) {
                 printf("no arguments");
             }
         }
-        printf(":\n   rogaura %s ", pDesiredFunc->szName);
+        printf(":\n   rogauracore %s ", pDesiredFunc->szName);
         for (int i = 0; i < pDesiredFunc->nColors; i++) {
             printf("COLOR%d ", i+1);
         }
