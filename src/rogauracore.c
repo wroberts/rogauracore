@@ -82,13 +82,15 @@ uint8_t MESSAGE_SET[] = {0x5d, 0xb5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 uint8_t MESSAGE_APPLY[] = {0x5d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-void initMessage(uint8_t *msg) {
+void
+initMessage(uint8_t *msg) {
     memset(msg, 0, MESSAGE_LENGTH);
     msg[0] = 0x5d;
     msg[1] = 0xb3;
 }
 
-void single_static(Arguments *args, Messages *outputs) {
+void
+single_static(Arguments *args, Messages *outputs) {
     V(printf("single_static\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
@@ -98,7 +100,8 @@ void single_static(Arguments *args, Messages *outputs) {
     m[6] = args->colors[0].nBlue;
 }
 
-void single_breathing(Arguments *args, Messages *outputs) {
+void
+single_breathing(Arguments *args, Messages *outputs) {
     V(printf("single_breathing\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
@@ -114,7 +117,8 @@ void single_breathing(Arguments *args, Messages *outputs) {
     m[12] = args->colors[1].nBlue;
 }
 
-void single_colorcycle(Arguments *args, Messages *outputs) {
+void
+single_colorcycle(Arguments *args, Messages *outputs) {
     V(printf("single_colorcycle\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
@@ -124,7 +128,8 @@ void single_colorcycle(Arguments *args, Messages *outputs) {
     m[7] = speedByteValue(args->speed);
 }
 
-void multi_static(Arguments *args, Messages *outputs) {
+void
+multi_static(Arguments *args, Messages *outputs) {
     V(printf("multi_static\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
@@ -138,7 +143,8 @@ void multi_static(Arguments *args, Messages *outputs) {
     }
 }
 
-void multi_breathing(Arguments *args, Messages *outputs) {
+void
+multi_breathing(Arguments *args, Messages *outputs) {
     V(printf("multi_breathing\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
@@ -162,47 +168,56 @@ const uint8_t MAGENTA[] = { 0xff, 0x00, 0xff };
 const uint8_t WHITE[] = { 0xff, 0xff, 0xff };
 const uint8_t BLACK[] = { 0x00, 0x00, 0x00 };
 
-void red(Arguments *args, Messages *messages) {
+void
+red(Arguments *args, Messages *messages) {
     memcpy(args->colors, RED, 3);
     single_static(args, messages);
 }
 
-void green(Arguments *args, Messages *messages) {
+void
+green(Arguments *args, Messages *messages) {
     memcpy(args->colors, GREEN, 3);
     single_static(args, messages);
 }
 
-void blue(Arguments *args, Messages *messages) {
+void
+blue(Arguments *args, Messages *messages) {
     memcpy(args->colors, BLUE, 3);
     single_static(args, messages);
 }
 
-void yellow(Arguments *args, Messages *messages) {
+void
+yellow(Arguments *args, Messages *messages) {
     memcpy(args->colors, YELLOW, 3);
     single_static(args, messages);
 }
 
-void cyan(Arguments *args, Messages *messages) {
+void
+cyan(Arguments *args, Messages *messages) {
     memcpy(args->colors, CYAN, 3);
     single_static(args, messages);
 }
 
-void magenta(Arguments *args, Messages *messages) {
+void
+magenta(Arguments *args, Messages *messages) {
     memcpy(args->colors, MAGENTA, 3);
     single_static(args, messages);
 }
 
-void white(Arguments *args, Messages *messages) {
+void
+white(Arguments *args, Messages *messages) {
     memcpy(args->colors, WHITE, 3);
     single_static(args, messages);
 }
 
-void black(Arguments *args, Messages *messages) {
+void
+black(Arguments *args, Messages *messages) {
     memcpy(args->colors, BLACK, 3);
     single_static(args, messages);
 }
 
-void rainbow(Arguments *args, Messages *messages) {
+void
+rainbow(Arguments *args, Messages *messages) {
     memcpy(&(args->colors[0]), RED, 3);
     memcpy(&(args->colors[1]), YELLOW, 3);
     memcpy(&(args->colors[2]), CYAN, 3);
@@ -234,7 +249,8 @@ const FunctionRecord FUNCTION_RECORDS[] = {
 
 const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTION_RECORDS[0]));
 
-void usage() {
+void
+usage() {
     printf("rogauracore - RGB keyboard control for Asus ROG laptops\n");
     printf("(c) 2019 Will Roberts\n\n");
     printf("Usage:\n");
@@ -245,7 +261,8 @@ void usage() {
     }
 }
 
-int parseColor(char *arg, Color *pResult) {
+int
+parseColor(char *arg, Color *pResult) {
     V(printf("parse color %s\n", arg));
     uint32_t v = 0;
     if (strlen(arg) != 6) goto fail;
@@ -265,7 +282,8 @@ fail:
     return -1;
 }
 
-int parseSpeed(char *arg, Speed *pResult) {
+int
+parseSpeed(char *arg, Speed *pResult) {
     V(printf("parse speed %s\n", arg));
     long nSpeed = strtol(arg, 0, 0);
     if (errno == ERANGE || nSpeed < 1 || nSpeed > 3) {
@@ -277,7 +295,8 @@ int parseSpeed(char *arg, Speed *pResult) {
     return 0;
 }
 
-int parseArguments(int argc, char **argv, Messages *messages) {
+int
+parseArguments(int argc, char **argv, Messages *messages) {
     int                   nRetval;
     Arguments             args;
     int                   nArgs         = 0;
@@ -377,7 +396,8 @@ const uint16_t ASUS_VENDOR_ID = 0x0b05;
 const uint16_t ASUS_PRODUCT_IDS[] = { 0x1854, 0x1869 };
 const int NUM_ASUS_PRODUCTS = (int)(sizeof(ASUS_PRODUCT_IDS) / sizeof(ASUS_PRODUCT_IDS[0]));
 
-int checkDevice(libusb_device *pDevice) {
+int
+checkDevice(libusb_device *pDevice) {
     struct libusb_device_descriptor devDesc;
     libusb_get_device_descriptor(pDevice, &devDesc);
     V(printf("Checking device %04x:%04x, address %d\n",
@@ -392,7 +412,8 @@ int checkDevice(libusb_device *pDevice) {
     return 0;
 }
 
-int controlTransfer(libusb_device_handle *pHandle, unsigned char *sData, uint16_t wLength) {
+int
+controlTransfer(libusb_device_handle *pHandle, unsigned char *sData, uint16_t wLength) {
     int nRetval = libusb_control_transfer(
         pHandle,
         0x21 /* bmRequestType */,
@@ -409,7 +430,8 @@ int controlTransfer(libusb_device_handle *pHandle, unsigned char *sData, uint16_
     return nRetval;
 }
 
-int handleUsb(Messages *pMessages) {
+int
+handleUsb(Messages *pMessages) {
     int                              nRetval;
     libusb_device                  **deviceList       = 0;
     int                              nDevices         = 0;
@@ -515,7 +537,8 @@ exit:
 //  Main function
 // ------------------------------------------------------------
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv) {
     Messages messages;
     if (parseArguments(argc, argv, &messages) == 0) {
         handleUsb(&messages);
