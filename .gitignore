@@ -11,5 +11,6 @@
 /config.status
 /config/
 /configure
+/Makefile
 /rogauracore
 stamp-h1
