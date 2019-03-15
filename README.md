@@ -34,6 +34,19 @@ COMMAND should be one of:
 
 ## Building
 
+### On Ubuntu from a release:
+
+```
+sudo apt install libusb-1.0-0 libusb-1.0-0-dev
+tar xf rogauracore-1.0.tar.gz
+cd rogauracore-1.0/
+./configure
+make
+sudo make install
+```
+
+### From github:
+
 Clone the github repo and enter the top-level directory.  Then:
 
 ```sh
