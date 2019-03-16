@@ -2,7 +2,7 @@
 
 (c) 2019 Will Roberts
 
-Linux-compatible Open-source libusb implementation similar to the Asus
+Linux-compatible open-source libusb implementation similar to the Asus
 Aura Core software.  Supports RGB keyboards with IDs
 [0b05:1854](https://linux-hardware.org/index.php?id=usb:0b05-1854)
 (GL553 and GL753) and
