@@ -412,7 +412,7 @@ parseArguments(int argc, char **argv, Messages *messages) {
 // ------------------------------------------------------------
 
 const uint16_t ASUS_VENDOR_ID = 0x0b05;
-const uint16_t ASUS_PRODUCT_IDS[] = { 0x1854, 0x1869 };
+const uint16_t ASUS_PRODUCT_IDS[] = { 0x1854, 0x1869, 0x1866 };
 const int NUM_ASUS_PRODUCTS = (int)(sizeof(ASUS_PRODUCT_IDS) / sizeof(ASUS_PRODUCT_IDS[0]));
 
 int
