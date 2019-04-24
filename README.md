@@ -50,7 +50,7 @@ sudo make install
 Clone the github repo and enter the top-level directory.  Then:
 
 ```sh
-autoreconf
+autoreconf -i
 ./configure
 make
 ```
