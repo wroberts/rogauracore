@@ -61,7 +61,7 @@ def acquire_usb():
         assert dev.bNumConfigurations == 1
         cfg = dev.configurations()[0]
         assert cfg.bNumInterfaces == 3
-        iface = 1
+        iface = 0
 
         active_iface = False
         if dev.is_kernel_driver_active(iface):
