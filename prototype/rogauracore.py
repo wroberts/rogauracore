@@ -20,7 +20,7 @@ import usb.core
 import usb.util
 
 ASUS_VENDOR_ID = 0x0B05
-ASUS_PRODUCT_ID = 0x1869
+ASUS_PRODUCT_ID = 0x1866
 
 
 class Color(namedtuple("Color", ["red", "green", "blue"])):
