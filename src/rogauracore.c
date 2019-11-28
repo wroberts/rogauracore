@@ -508,14 +508,16 @@ handleUsb(Messages *pMessages) {
         fprintf(stderr, "Could not get configuration descriptor: %s.\n", libusb_error_name(nRetval));
         goto close;
     }
+    V(printf("Got configuration descriptor.\n"));
 
     // We want to claim the first interface on the device
     if (pConfig->bNumInterfaces == 0) {
-        fprintf(stderr, "No interfaces defined on the USB device.");
+        fprintf(stderr, "No interfaces defined on the USB device.\n");
         nRetval = -1; goto freedesc;
     }
+    V(printf("Found %d interfaces on the USB device.\n", pConfig->bNumInterfaces));
     if (pConfig->interface[0].num_altsetting == 0) {
-        fprintf(stderr, "No interface descriptors for the first interface of the USB device.");
+        fprintf(stderr, "No interface descriptors for the first interface of the USB device.\n");
         nRetval = -1; goto freedesc;
     }
     bInterfaceNumber = pConfig->interface[0].altsetting[0].bInterfaceNumber;
@@ -528,15 +530,24 @@ handleUsb(Messages *pMessages) {
     }
     V(printf("Claimed interface %d.\n", bInterfaceNumber));
 
+    // nRetval = controlTransfer(pHandle, MESSAGE_PREAMBLE, sizeof(MESSAGE_PREAMBLE));
+    // nRetval = controlTransfer(pHandle, MESSAGE_BRIGHTEN, sizeof(MESSAGE_BRIGHTEN));
     // Send the control messages
     for (int i = 0; i < pMessages->nMessages; ++i) {
         nRetval = controlTransfer(pHandle, pMessages->messages[i], MESSAGE_LENGTH);
-        if (nRetval < 0) goto release;
+        if (nRetval < 0) {
+          fprintf(stderr, "Sending message %d of %d failed.\n", i, pMessages->nMessages);
+          goto release;
+        }
     }
+    if (nRetval < 0) goto release;
+    V(printf("Successfully sent all messages.\n"));
     nRetval = controlTransfer(pHandle, MESSAGE_SET, MESSAGE_LENGTH);
     if (nRetval < 0) goto release;
+    V(printf("Sent SET message.\n"));
     nRetval = controlTransfer(pHandle, MESSAGE_APPLY, MESSAGE_LENGTH);
     if (nRetval < 0) goto release;
+    V(printf("Sent APPLY message.\n"));
 
 release:
     libusb_release_interface(pHandle, bInterfaceNumber);
