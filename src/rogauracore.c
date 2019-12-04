@@ -1,6 +1,7 @@
 /**
  * rogauracore
  * Copyright (c) 2019 Will Roberts
+ * Copyright (c) 2019 Josh Ventura
  *
  * Author:        Will Roberts <wildwilhelm@gmail.com> (WKR)
  * Creation Date: 13 March 2019
@@ -12,6 +13,10 @@
  *
  *    (WKR) 13 March 2019
  *          - Boilerplate header added.
+ *    (JPV) 28 November 2019
+ *          - Added support for brightness adjustment.
+ *          - Generalized speed specification mechanism to accomodate brightness
+ *            or other integer values.
  *
  * \file rogauracore.c
  */
@@ -49,11 +54,12 @@ extern int errno;
 #define MESSAGE_LENGTH 17
 #define MAX_NUM_MESSAGES 6
 #define MAX_NUM_COLORS 4
+#define MAX_NUM_SCALARS 4
 #define MAX_FUNCNAME_LEN 32
 
 // verbose output
 int verbose = 0;
-#define V(x) if (verbose) { x; }
+#define V(x) if (!verbose); else x
 
 
 // ------------------------------------------------------------
@@ -66,25 +72,34 @@ typedef struct {
     uint8_t nBlue;
 } Color;
 
-typedef enum {Slow = 1, Medium, Fast} Speed;
-
 typedef struct {
     Color colors[MAX_NUM_COLORS];
-    Speed speed;
+    int scalars[MAX_NUM_SCALARS];
 } Arguments;
 
 typedef struct {
     int nMessages;
     uint8_t messages[MAX_NUM_MESSAGES][MESSAGE_LENGTH];
+    int setAndApply;
 } Messages;
+
+typedef struct {
+    const char *NAME;
+    const char *name;
+    int min;
+    int max;
+} ScalarDef;
 
 typedef struct {
     const char *szName;
     void (*function)(Arguments *args, Messages *outputs);
     int nColors;
-    int nSpeed;
+    int nScalars;
+    ScalarDef scalars[MAX_NUM_SCALARS];
 } FunctionRecord;
 
+const ScalarDef SPEED = { "SPEED", "speed", 1, 3 };
+const ScalarDef BRIGHTNESS = { "BRIGHTNESS", "brightness", 0, 3 };
 
 // ------------------------------------------------------------
 //  USB protocol for RGB keyboard
@@ -92,14 +107,14 @@ typedef struct {
 
 const uint8_t SPEED_BYTE_VALUES[] = {0xe1, 0xeb, 0xf5};
 
-uint8_t speedByteValue(Speed speed) {
+uint8_t speedByteValue(int speed) {
     return SPEED_BYTE_VALUES[speed - 1];
 }
 
-uint8_t MESSAGE_SET[] = {0x5d, 0xb5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-uint8_t MESSAGE_APPLY[] = {0x5d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const int BRIGHTNESS_OFFSET = 4;
+uint8_t MESSAGE_BRIGHTNESS[MESSAGE_LENGTH] = {0x5a, 0xba, 0xc5, 0xc4};
+uint8_t MESSAGE_SET[MESSAGE_LENGTH] = {0x5d, 0xb5};
+uint8_t MESSAGE_APPLY[MESSAGE_LENGTH] = {0x5d, 0xb4};
 
 void
 initMessage(uint8_t *msg) {
@@ -129,7 +144,7 @@ single_breathing(Arguments *args, Messages *outputs) {
     m[4] = args->colors[0].nRed;
     m[5] = args->colors[0].nGreen;
     m[6] = args->colors[0].nBlue;
-    m[7] = speedByteValue(args->speed);
+    m[7] = speedByteValue(args->scalars[0]);
     m[9] = 1;
     m[10] = args->colors[1].nRed;
     m[11] = args->colors[1].nGreen;
@@ -144,7 +159,7 @@ single_colorcycle(Arguments *args, Messages *outputs) {
     initMessage(m);
     m[3] = 2;
     m[4] = 0xff;
-    m[7] = speedByteValue(args->speed);
+    m[7] = speedByteValue(args->scalars[0]);
 }
 
 void
@@ -174,8 +189,17 @@ multi_breathing(Arguments *args, Messages *outputs) {
         m[4] = args->colors[i].nRed;
         m[5] = args->colors[i].nGreen;
         m[6] = args->colors[i].nBlue;
-        m[7] = speedByteValue(args->speed);
+        m[7] = speedByteValue(args->scalars[0]);
     }
+}
+
+void
+set_brightness(Arguments *args, Messages *outputs) {
+    V(printf("single_static\n"));
+    memcpy(outputs->messages[0], MESSAGE_BRIGHTNESS, MESSAGE_LENGTH);
+    outputs->messages[0][BRIGHTNESS_OFFSET] = args->scalars[0];
+    outputs->nMessages = 1;
+    outputs->setAndApply = 0;
 }
 
 const uint8_t RED[] = { 0xff, 0x00, 0x00 };
@@ -251,10 +275,10 @@ rainbow(Arguments *args, Messages *messages) {
 
 const FunctionRecord FUNCTION_RECORDS[] = {
     {"single_static", &single_static, 1, 0},
-    {"single_breathing", &single_breathing, 2, 1},
-    {"single_colorcycle", &single_colorcycle, 0, 1},
+    {"single_breathing", &single_breathing, 2, 1, {SPEED}},
+    {"single_colorcycle", &single_colorcycle, 0, 1, {SPEED}},
     {"multi_static", &multi_static, 4, 0},
-    {"multi_breathing", &multi_breathing, 4, 1},
+    {"multi_breathing", &multi_breathing, 4, 1, {SPEED}},
     {"red", &red, 0, 0},
     {"green", &green, 0, 0},
     {"blue", &blue, 0, 0},
@@ -264,6 +288,7 @@ const FunctionRecord FUNCTION_RECORDS[] = {
     {"white", &white, 0, 0},
     {"black", &black, 0, 0},
     {"rainbow", &rainbow, 0, 0},
+    {"brightness", &set_brightness, 0, 1, {BRIGHTNESS}},
 };
 
 const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTION_RECORDS[0]));
@@ -302,15 +327,16 @@ fail:
 }
 
 int
-parseSpeed(char *arg, Speed *pResult) {
+parseScalar(char *arg, ScalarDef type, int *pResult) {
     V(printf("parse speed %s\n", arg));
     long nSpeed = strtol(arg, 0, 0);
-    if (errno == ERANGE || nSpeed < 1 || nSpeed > 3) {
-        fprintf(stderr, "Could not interpret speed parameter value %s\n", arg);
-        fprintf(stderr, "Please give this value as an integer: 1 (slow), 2 (medium), or 3 (fast).\n");
+    if (errno == ERANGE || nSpeed < type.min || nSpeed > type.max) {
+        fprintf(stderr, "Could not interpret %s parameter value %s\n"
+                "Please give this value as an integer from %d to %d.\n",
+                type.name, arg, type.min, type.max);
         return -1;
     }
-    *pResult = (Speed)nSpeed;
+    *pResult = nSpeed;
     return 0;
 }
 
@@ -321,6 +347,7 @@ parseArguments(int argc, char **argv, Messages *messages) {
     int                   nArgs         = 0;
     const FunctionRecord *pDesiredFunc  = 0;
     int                   nColors       = 0;
+    int                   nScalars      = 0;
 
     // check for command line options
     while ((nRetval = getopt(argc, argv, "v")) != -1) {
@@ -349,18 +376,24 @@ parseArguments(int argc, char **argv, Messages *messages) {
         return -1;
     }
     // check that the function signature is satisfied
-    if (nArgs != (1 + pDesiredFunc->nColors + pDesiredFunc->nSpeed)) {
+    if (nArgs != (1 + pDesiredFunc->nColors + pDesiredFunc->nScalars)) {
         usage();
         printf("\nFunction %s takes ", pDesiredFunc->szName);
         if (pDesiredFunc->nColors > 0) {
-            if (pDesiredFunc->nSpeed) {
+            if (pDesiredFunc->nScalars == 1) {
                 printf("%d color(s) and a speed", pDesiredFunc->nColors);
+            } else if (pDesiredFunc->nScalars) {
+                printf("%d color(s) and %d integers",
+                       pDesiredFunc->nColors, pDesiredFunc->nScalars);
             } else {
                 printf("%d color(s)", pDesiredFunc->nColors);
             }
         } else {
-            if (pDesiredFunc->nSpeed) {
-                printf("a speed");
+            if (pDesiredFunc->nScalars == 1) {
+                const ScalarDef *d = pDesiredFunc->scalars;
+                printf("a single integer from %d to %d", d->min, d->max);
+            } else if (pDesiredFunc->nScalars) {
+                printf("%d integers", pDesiredFunc->nScalars);
             } else {
                 printf("no arguments");
             }
@@ -369,8 +402,8 @@ parseArguments(int argc, char **argv, Messages *messages) {
         for (int i = 0; i < pDesiredFunc->nColors; i++) {
             printf("COLOR%d ", i+1);
         }
-        if (pDesiredFunc->nSpeed) {
-            printf("SPEED");
+        for (int i = 0; i < pDesiredFunc->nScalars; i++) {
+            printf("%s ", pDesiredFunc->scalars[i].NAME);
         }
         printf("\n\nCOLOR argument(s) should be given as hex values like ff0000\n");
         printf("SPEED argument should be given as an integer: 1, 2, or 3\n");
@@ -382,16 +415,20 @@ parseArguments(int argc, char **argv, Messages *messages) {
             nRetval = parseColor(argv[i], &(args.colors[nColors]));
             if (nRetval < 0) return -1;
             nColors++;
-        } else {
-            nRetval = parseSpeed(argv[i], &args.speed);
+        } else if (nScalars < pDesiredFunc->nScalars) {
+            nRetval = parseScalar(argv[i], pDesiredFunc->scalars[nScalars],
+                                  &(args.scalars[nScalars]));
             if (nRetval < 0) return -1;
+            nScalars++;
         }
     }
     V(printf("args:\n"));
     for (int i = 0; i < MAX_NUM_COLORS; ++i) {
         V(printf("color%d %d %d %d\n", i + 1, args.colors[i].nRed, args.colors[i].nGreen, args.colors[i].nBlue));
     }
-    V(printf("speed %d\n", args.speed));
+    for (int i = 0; i < pDesiredFunc->nScalars; ++i) {
+      V(printf("%s %d\n", pDesiredFunc->scalars[i].name, args.scalars[i]));
+    }
     // call the function the user wants
     pDesiredFunc->function(&args, messages);
     V(printf("constructed %d messages:\n", messages->nMessages));
@@ -508,14 +545,16 @@ handleUsb(Messages *pMessages) {
         fprintf(stderr, "Could not get configuration descriptor: %s.\n", libusb_error_name(nRetval));
         goto close;
     }
+    V(printf("Got configuration descriptor.\n"));
 
     // We want to claim the first interface on the device
     if (pConfig->bNumInterfaces == 0) {
-        fprintf(stderr, "No interfaces defined on the USB device.");
+        fprintf(stderr, "No interfaces defined on the USB device.\n");
         nRetval = -1; goto freedesc;
     }
+    V(printf("Found %d interfaces on the USB device.\n", pConfig->bNumInterfaces));
     if (pConfig->interface[0].num_altsetting == 0) {
-        fprintf(stderr, "No interface descriptors for the first interface of the USB device.");
+        fprintf(stderr, "No interface descriptors for the first interface of the USB device.\n");
         nRetval = -1; goto freedesc;
     }
     bInterfaceNumber = pConfig->interface[0].altsetting[0].bInterfaceNumber;
@@ -531,12 +570,21 @@ handleUsb(Messages *pMessages) {
     // Send the control messages
     for (int i = 0; i < pMessages->nMessages; ++i) {
         nRetval = controlTransfer(pHandle, pMessages->messages[i], MESSAGE_LENGTH);
-        if (nRetval < 0) goto release;
+        if (nRetval < 0) {
+          fprintf(stderr, "Sending message %d of %d failed.\n", i, pMessages->nMessages);
+          goto release;
+        }
     }
-    nRetval = controlTransfer(pHandle, MESSAGE_SET, MESSAGE_LENGTH);
     if (nRetval < 0) goto release;
-    nRetval = controlTransfer(pHandle, MESSAGE_APPLY, MESSAGE_LENGTH);
-    if (nRetval < 0) goto release;
+    V(printf("Successfully sent all messages.\n"));
+    if (pMessages->setAndApply) {
+        nRetval = controlTransfer(pHandle, MESSAGE_SET, MESSAGE_LENGTH);
+        if (nRetval < 0) goto release;
+        V(printf("Sent SET message.\n"));
+        nRetval = controlTransfer(pHandle, MESSAGE_APPLY, MESSAGE_LENGTH);
+        if (nRetval < 0) goto release;
+        V(printf("Sent APPLY message.\n"));
+    }
 
 release:
     libusb_release_interface(pHandle, bInterfaceNumber);
@@ -559,6 +607,7 @@ exit:
 int
 main(int argc, char **argv) {
     Messages messages;
+    messages.setAndApply = 1;
     if (parseArguments(argc, argv, &messages) == 0) {
         handleUsb(&messages);
     }
