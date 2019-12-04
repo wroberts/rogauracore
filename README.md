@@ -61,7 +61,8 @@ On some machines, running `rogauracore` can cause the system's power
 management to not be able to find the keyboard backlight control.
 This manifests as unresponsive UI controls for brightening and
 darkening the keyboard backlight.  If this issue affects you,
-@willlovesbearz suggests running this command after `rogauracore`:
+[@willlovesbearz](https://github.com/willlovesbearz) suggests running
+this command after `rogauracore`:
 
 ```sh
 sudo systemctl restart upower.service
