@@ -262,22 +262,23 @@ parseSpeed(const char *arg, const Argument *defaultValue, Argument *pResult);
 int
 parseBrightness(const char *arg, const Argument *defaultValue, Argument *pResult);
 
+const Argument NO_DEFAULT =  { .type = AK_UNSPECIFIED };
 const Argument ZERO =  { .type = AK_SCALAR, .scalar = 0 };
 const Argument ONE =   { .type = AK_SCALAR, .scalar = 1 };
 const Argument TWO =   { .type = AK_SCALAR, .scalar = 2 };
 const Argument THREE = { .type = AK_SCALAR, .scalar = 3 };
 const Argument AUTO =  { .type = AK_AUTOMATIC };
 
-const ArgumentDef COLOR =  {"COLOR", AK_COLOR, parseColor};
-const ArgumentDef COLOR1 = {"COLOR1", AK_COLOR, parseColor};
-const ArgumentDef COLOR2 = {"COLOR2", AK_COLOR, parseColor};
-const ArgumentDef COLOR3 = {"COLOR3", AK_COLOR, parseColor};
-const ArgumentDef COLOR4 = {"COLOR4", AK_COLOR, parseColor};
-const ArgumentDef SPEED =  {"SPEED", AK_SCALAR, parseSpeed};
-const ArgumentDef BRIGHTNESS = {"BRIGHTNESS", AK_SCALAR, parseBrightness };
+const ArgumentDef COLOR =  {"COLOR",  AK_COLOR, parseColor, NO_DEFAULT};
+const ArgumentDef COLOR1 = {"COLOR1", AK_COLOR, parseColor, NO_DEFAULT};
+const ArgumentDef COLOR2 = {"COLOR2", AK_COLOR, parseColor, NO_DEFAULT};
+const ArgumentDef COLOR3 = {"COLOR3", AK_COLOR, parseColor, NO_DEFAULT};
+const ArgumentDef COLOR4 = {"COLOR4", AK_COLOR, parseColor, NO_DEFAULT};
+const ArgumentDef SPEED =  {"SPEED", AK_SCALAR, parseSpeed, NO_DEFAULT};
+const ArgumentDef BRIGHTNESS = {"BRIGHTNESS", AK_SCALAR, parseBrightness, NO_DEFAULT};
 
-const ArgumentDef COLOR2_OR_AUTO = {"COLOR2", AK_COLOR, parseColor, AUTO};
-const ArgumentDef SPEED_OR_TWO =  {"SPEED", AK_SCALAR, parseSpeed, TWO};
+const ArgumentDef COLOR2_OR_AUTO = {"COLOR2", AK_COLOR,  parseColor, AUTO};
+const ArgumentDef SPEED_OR_TWO   =  {"SPEED", AK_SCALAR, parseSpeed, TWO};
 const ArgumentDef SPEED_OR_THREE =  {"SPEED", AK_SCALAR, parseSpeed, THREE};
 
 const FunctionRecord FUNCTION_RECORDS[] = {
@@ -348,7 +349,6 @@ const int NUM_NAMED_BRIGHTNESSES =
 void
 printFuncUsage(const FunctionRecord *func) {
     printf("%s", func->szName);
-    int num_closing = 0;
     for (int i = 0; i < func->nArgs; ++i) {
         const ArgumentDef *arg = &func->args[i];
         printf(arg->defaultValue.type ? " [" : " ");
@@ -361,11 +361,10 @@ printFuncUsage(const FunctionRecord *func) {
 inline void
 printColumns(int nItems, const void *items, int itemSize, int nColumns) {
     const int nRows = (nItems + nColumns - 1) / nColumns;
-    int printed = 0;
     for (int i = 0; i < nRows; ++i) {
         printf("\n   ");
         for (int j = 0; i + j < nItems; j += nRows) {
-            printf("%-12s", *(const char**)(items + itemSize * (i + j)));
+            printf("%-12s", *(const char**)((int8_t*) items + itemSize * (i + j)));
         }
     }
 }
@@ -473,7 +472,7 @@ parseScalar(const char *arg, int num_named_vals, const NamedScalar *named_vals,
         }
         return -1;
     }
-    V(printf("Parsed as %d\n", nScalar));
+    V(printf("Parsed as %ld\n", nScalar));
     pResult->scalar = nScalar;
     return 0;
 }
@@ -507,7 +506,7 @@ parseBrightness(const char *arg, const Argument *defValue, Argument *pResult) {
 int
 parseArguments(int argc, char **argv, Messages *messages) {
     int                   nRetval;
-    Arguments             args = {};
+    Arguments             args          = {0};
     int                   nArgs         = 0;
     int                   nArgsRead     = 0;
     const FunctionRecord *pDesiredFunc  = 0;
@@ -565,7 +564,7 @@ parseArguments(int argc, char **argv, Messages *messages) {
             printf("\nFunction %s takes %d-%d arguments:\n",
                    pDesiredFunc->szName, min_args, pDesiredFunc->nArgs);
         }
-        printf("   rogauracore ", pDesiredFunc->szName);
+        printf("   rogauracore ");
         printFuncUsage(pDesiredFunc);
         return -1;
     }
