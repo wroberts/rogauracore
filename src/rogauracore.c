@@ -17,6 +17,10 @@
  *          - Added support for brightness adjustment.
  *          - Generalized speed specification mechanism to accomodate brightness
  *            or other integer values.
+ *    (JPV) 29 November 2019
+ *          - Added support for single_pulsing and the official rainbow effect.
+ *          - Added support for optional arguments and usage printing.
+ *          - Generalized argument formats.
  *
  * \file rogauracore.c
  */
@@ -37,6 +41,9 @@
 
 #if HAVE_UNISTD_H
 #  include <unistd.h>
+#else
+int getopt(int argc, char * const argv[], const char *optstring);
+extern int optind;
 #endif
 
 #if HAVE_ERRNO_H
@@ -53,8 +60,7 @@ extern int errno;
 
 #define MESSAGE_LENGTH 17
 #define MAX_NUM_MESSAGES 6
-#define MAX_NUM_COLORS 4
-#define MAX_NUM_SCALARS 4
+#define MAX_NUM_ARGUMENTS 8
 #define MAX_FUNCNAME_LEN 32
 
 // verbose output
@@ -73,9 +79,38 @@ typedef struct {
 } Color;
 
 typedef struct {
-    Color colors[MAX_NUM_COLORS];
-    int scalars[MAX_NUM_SCALARS];
-} Arguments;
+    const char *name;
+    Color color;
+} NamedColor;
+
+typedef struct {
+    const char *name;
+    int value;
+} NamedScalar;
+
+typedef enum {
+    AK_UNSPECIFIED,
+    AK_COLOR,
+    AK_SCALAR,
+    AK_AUTOMATIC
+} ArgumentKind;
+
+typedef struct {
+    ArgumentKind type;
+    union {
+      Color color;
+      int scalar;
+    } v;
+} Argument;
+
+typedef Argument Arguments[MAX_NUM_ARGUMENTS];
+
+typedef struct {
+    const char *name;
+    ArgumentKind kind;
+    int (*parse)(const char *value, const Argument *defaultValue, Argument *out);
+    Argument defaultValue;
+} ArgumentDef;
 
 typedef struct {
     int nMessages;
@@ -83,23 +118,13 @@ typedef struct {
     int setAndApply;
 } Messages;
 
-typedef struct {
-    const char *NAME;
-    const char *name;
-    int min;
-    int max;
-} ScalarDef;
 
 typedef struct {
     const char *szName;
-    void (*function)(Arguments *args, Messages *outputs);
-    int nColors;
-    int nScalars;
-    ScalarDef scalars[MAX_NUM_SCALARS];
+    void (*function)(Arguments args, Messages *outputs);
+    int nArgs;
+    ArgumentDef args[MAX_NUM_ARGUMENTS];
 } FunctionRecord;
-
-const ScalarDef SPEED = { "SPEED", "speed", 1, 3 };
-const ScalarDef BRIGHTNESS = { "BRIGHTNESS", "brightness", 0, 3 };
 
 // ------------------------------------------------------------
 //  USB protocol for RGB keyboard
@@ -124,61 +149,75 @@ initMessage(uint8_t *msg) {
 }
 
 void
-single_static(Arguments *args, Messages *outputs) {
+single_static(Arguments args, Messages *outputs) {
     V(printf("single_static\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
     initMessage(m);
-    m[4] = args->colors[0].nRed;
-    m[5] = args->colors[0].nGreen;
-    m[6] = args->colors[0].nBlue;
+    m[4] = args[0].v.color.nRed;
+    m[5] = args[0].v.color.nGreen;
+    m[6] = args[0].v.color.nBlue;
 }
 
 void
-single_breathing(Arguments *args, Messages *outputs) {
+single_breathing(Arguments args, Messages *outputs) {
     V(printf("single_breathing\n"));
     outputs->nMessages = 1;
+    if (args[1].type == AK_AUTOMATIC) args[1] = args[0];
     uint8_t *m = outputs->messages[0];
     initMessage(m);
     m[3] = 1;
-    m[4] = args->colors[0].nRed;
-    m[5] = args->colors[0].nGreen;
-    m[6] = args->colors[0].nBlue;
-    m[7] = speedByteValue(args->scalars[0]);
+    m[4] = args[0].v.color.nRed;
+    m[5] = args[0].v.color.nGreen;
+    m[6] = args[0].v.color.nBlue;
+    m[7] = speedByteValue(args[2].v.scalar);
     m[9] = 1;
-    m[10] = args->colors[1].nRed;
-    m[11] = args->colors[1].nGreen;
-    m[12] = args->colors[1].nBlue;
+    m[10] = args[1].v.color.nRed;
+    m[11] = args[1].v.color.nGreen;
+    m[12] = args[1].v.color.nBlue;
 }
 
 void
-single_colorcycle(Arguments *args, Messages *outputs) {
+single_pulsing(Arguments args, Messages *outputs) {
+    V(printf("single_pulsing\n"));
+    outputs->nMessages = 1;
+    uint8_t *m = outputs->messages[0];
+    initMessage(m);
+    m[3] = 0x0a;
+    m[4] = args[0].v.color.nRed;
+    m[5] = args[0].v.color.nGreen;
+    m[6] = args[0].v.color.nBlue;
+    m[7] = speedByteValue(args[1].v.scalar);
+}
+
+void
+single_colorcycle(Arguments args, Messages *outputs) {
     V(printf("single_colorcycle\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
     initMessage(m);
     m[3] = 2;
     m[4] = 0xff;
-    m[7] = speedByteValue(args->scalars[0]);
+    m[7] = speedByteValue(args[0].v.scalar);
 }
 
 void
-multi_static(Arguments *args, Messages *outputs) {
+multi_static(Arguments args, Messages *outputs) {
     V(printf("multi_static\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
         uint8_t *m = outputs->messages[i];
         initMessage(m);
         m[2] = i + 1;
-        m[4] = args->colors[i].nRed;
-        m[5] = args->colors[i].nGreen;
-        m[6] = args->colors[i].nBlue;
+        m[4] = args[i].v.color.nRed;
+        m[5] = args[i].v.color.nGreen;
+        m[6] = args[i].v.color.nBlue;
         m[7] = 0xeb;
     }
 }
 
 void
-multi_breathing(Arguments *args, Messages *outputs) {
+multi_breathing(Arguments args, Messages *outputs) {
     V(printf("multi_breathing\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
@@ -186,112 +225,144 @@ multi_breathing(Arguments *args, Messages *outputs) {
         initMessage(m);
         m[2] = i + 1;
         m[3] = 1;
-        m[4] = args->colors[i].nRed;
-        m[5] = args->colors[i].nGreen;
-        m[6] = args->colors[i].nBlue;
-        m[7] = speedByteValue(args->scalars[0]);
+        m[4] = args[i].v.color.nRed;
+        m[5] = args[i].v.color.nGreen;
+        m[6] = args[i].v.color.nBlue;
+        m[7] = speedByteValue(args[0].v.scalar);
     }
 }
 
 void
-set_brightness(Arguments *args, Messages *outputs) {
+rainbow(Arguments args, Messages *outputs) {
+    V(printf("rainbow\n"));
+    uint8_t *m = outputs->messages[0];
+    initMessage(m);
+    m[3] = 0x03;
+    m[4] = 0x08;
+    m[5] = 0xff;
+    m[6] = 0xf0;
+    m[7] = speedByteValue(args[0].v.scalar);
+    outputs->nMessages = 1;
+}
+
+void
+set_brightness(Arguments args, Messages *outputs) {
     V(printf("single_static\n"));
     memcpy(outputs->messages[0], MESSAGE_BRIGHTNESS, MESSAGE_LENGTH);
-    outputs->messages[0][BRIGHTNESS_OFFSET] = args->scalars[0];
+    outputs->messages[0][BRIGHTNESS_OFFSET] = args[0].v.scalar;
     outputs->nMessages = 1;
     outputs->setAndApply = 0;
 }
-
-const uint8_t RED[] = { 0xff, 0x00, 0x00 };
-const uint8_t GREEN[] = { 0x00, 0xff, 0x00 };
-const uint8_t BLUE[] = { 0x00, 0x00, 0xff };
-const uint8_t YELLOW[] = { 0xff, 0xff, 0x00 };
-const uint8_t CYAN[] = { 0x00, 0xff, 0xff };
-const uint8_t MAGENTA[] = { 0xff, 0x00, 0xff };
-const uint8_t WHITE[] = { 0xff, 0xff, 0xff };
-const uint8_t BLACK[] = { 0x00, 0x00, 0x00 };
-
-void
-red(Arguments *args, Messages *messages) {
-    memcpy(args->colors, RED, 3);
-    single_static(args, messages);
-}
-
-void
-green(Arguments *args, Messages *messages) {
-    memcpy(args->colors, GREEN, 3);
-    single_static(args, messages);
-}
-
-void
-blue(Arguments *args, Messages *messages) {
-    memcpy(args->colors, BLUE, 3);
-    single_static(args, messages);
-}
-
-void
-yellow(Arguments *args, Messages *messages) {
-    memcpy(args->colors, YELLOW, 3);
-    single_static(args, messages);
-}
-
-void
-cyan(Arguments *args, Messages *messages) {
-    memcpy(args->colors, CYAN, 3);
-    single_static(args, messages);
-}
-
-void
-magenta(Arguments *args, Messages *messages) {
-    memcpy(args->colors, MAGENTA, 3);
-    single_static(args, messages);
-}
-
-void
-white(Arguments *args, Messages *messages) {
-    memcpy(args->colors, WHITE, 3);
-    single_static(args, messages);
-}
-
-void
-black(Arguments *args, Messages *messages) {
-    memcpy(args->colors, BLACK, 3);
-    single_static(args, messages);
-}
-
-void
-rainbow(Arguments *args, Messages *messages) {
-    memcpy(&(args->colors[0]), RED, 3);
-    memcpy(&(args->colors[1]), YELLOW, 3);
-    memcpy(&(args->colors[2]), CYAN, 3);
-    memcpy(&(args->colors[3]), MAGENTA, 3);
-    multi_static(args, messages);
-}
-
 
 // ------------------------------------------------------------
 //  Command line argument parsing
 // ------------------------------------------------------------
 
+int
+parseColor(const char *arg, const Argument *defaultValue, Argument *pResult);
+int
+parseSpeed(const char *arg, const Argument *defaultValue, Argument *pResult);
+int
+parseBrightness(const char *arg, const Argument *defaultValue, Argument *pResult);
+
+#define NO_DEFAULT        { .type = AK_UNSPECIFIED }
+#define SCALAR_DEFAULT(x) { .type = AK_SCALAR, .v.scalar = (x) }
+#define AUTO              { .type = AK_AUTOMATIC }
+
+#define COLOR      {"COLOR",      AK_COLOR,  parseColor,      NO_DEFAULT}
+#define COLORN(n)  {"COLOR" #n,   AK_COLOR,  parseColor,      NO_DEFAULT}
+#define SPEED      {"SPEED",      AK_SCALAR, parseSpeed,      NO_DEFAULT}
+#define BRIGHTNESS {"BRIGHTNESS", AK_SCALAR, parseBrightness, NO_DEFAULT}
+
+#define COLOR_OR(x)     {"COLOR",    AK_COLOR,  parseColor,   x}
+#define COLORN_OR(n, x) {"COLOR" #n, AK_COLOR,  parseColor,   x}
+#define SPEED_OR(x)     {"SPEED",    AK_SCALAR, parseSpeed,   x}
+
 const FunctionRecord FUNCTION_RECORDS[] = {
-    {"single_static", &single_static, 1, 0},
-    {"single_breathing", &single_breathing, 2, 1, {SPEED}},
-    {"single_colorcycle", &single_colorcycle, 0, 1, {SPEED}},
-    {"multi_static", &multi_static, 4, 0},
-    {"multi_breathing", &multi_breathing, 4, 1, {SPEED}},
-    {"red", &red, 0, 0},
-    {"green", &green, 0, 0},
-    {"blue", &blue, 0, 0},
-    {"yellow", &yellow, 0, 0},
-    {"cyan", &cyan, 0, 0},
-    {"magenta", &magenta, 0, 0},
-    {"white", &white, 0, 0},
-    {"black", &black, 0, 0},
-    {"rainbow", &rainbow, 0, 0},
-    {"brightness", &set_brightness, 0, 1, {BRIGHTNESS}},
+    {"single_static", &single_static, 1, {COLOR}},
+    {"single_breathing", &single_breathing, 3, {
+        COLORN(1), COLORN_OR(2, AUTO), SPEED_OR(SCALAR_DEFAULT(2))
+    }},
+    {"single_pulsing", &single_pulsing, 2, {
+        COLOR, SPEED
+    }},
+    {"single_colorcycle", &single_colorcycle, 1, {
+        SPEED
+    }},
+    {"multi_static", &multi_static, 4, {
+        COLORN(1), COLORN(2), COLORN(3), COLORN(4)
+    }},
+    {"multi_breathing", &multi_breathing, 5, {
+        COLORN(1), COLORN(2), COLORN(3), COLORN(4), SPEED
+    }},
+    {"rainbow", &rainbow, 1, {
+        SPEED_OR(SCALAR_DEFAULT(3))
+    }},
+    {"brightness", &set_brightness, 1, {
+        BRIGHTNESS
+    }},
 };
 
 const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTION_RECORDS[0]));
+
+const NamedColor NAMED_COLORS[] = {
+    {"red",      { 0xff, 0x00, 0x00 }},
+    {"orange",   { 0xff, 0x80, 0x00 }},
+    {"yellow",   { 0xff, 0xff, 0x00 }},
+    {"lime",     { 0x80, 0xff, 0x00 }},
+    {"green",    { 0x00, 0xff, 0x00 }},
+    {"teal",     { 0x00, 0xff, 0x40 }},
+    {"turquoise",{ 0x00, 0xff, 0x80 }},
+    {"cyan",     { 0x00, 0xff, 0xff }},
+    {"skyBlue",  { 0x00, 0x80, 0xff }},
+    {"blue",     { 0x00, 0x00, 0xff }},
+    {"indigo",   { 0x40, 0x00, 0xff }},
+    {"violet",   { 0x80, 0x00, 0xff }},
+    {"magenta",  { 0xff, 0x00, 0xff }},
+    {"pink",     { 0xff, 0x40, 0xe0 }},
+    {"deepPink", { 0xff, 0x00, 0x80 }},
+    {"hotPink",  { 0xff, 0x00, 0x40 }},
+    {"white",    { 0xff, 0xff, 0xff }},
+    {"black",    { 0x00, 0x00, 0x00 }},
+};
+
+const int NUM_NAMED_COLORS =
+    (int)(sizeof(NAMED_COLORS) / sizeof(*NAMED_COLORS));
+
+const NamedScalar NAMED_SPEEDS[] = {
+    {"slow", 1}, {"low", 1}, {"medium", 2}, {"fast", 3}, {"high", 3}
+};
+const int NUM_NAMED_SPEEDS =
+    (int)(sizeof(NAMED_SPEEDS) / sizeof(*NAMED_SPEEDS));
+
+const NamedScalar NAMED_BRIGHTNESSES[] = {
+    {"off", 0}, {"low", 1}, {"dim", 1}, {"medium", 2}, {"high", 3}, {"bright", 3}
+};
+const int NUM_NAMED_BRIGHTNESSES =
+    (int)(sizeof(NAMED_BRIGHTNESSES) / sizeof(*NAMED_BRIGHTNESSES));
+
+void
+printFuncUsage(const FunctionRecord *func) {
+    printf("%s", func->szName);
+    for (int i = 0; i < func->nArgs; ++i) {
+        const ArgumentDef *arg = &func->args[i];
+        printf(arg->defaultValue.type ? " [" : " ");
+        printf("%s", arg->name);
+        if (arg->defaultValue.type) printf("]");
+    }
+    printf("\n");
+}
+
+inline void
+printColumns(int nItems, const void *items, int itemSize, int nColumns) {
+    const int nRows = (nItems + nColumns - 1) / nColumns;
+    for (int i = 0; i < nRows; ++i) {
+        printf("\n   ");
+        for (int j = 0; i + j < nItems; j += nRows) {
+            printf("%-12s", *(const char**)((int8_t*) items + itemSize * (i + j)));
+        }
+    }
+}
 
 void
 usage() {
@@ -299,55 +370,152 @@ usage() {
     printf("(c) 2019 Will Roberts\n\n");
     printf("Usage:\n");
     printf("   rogauracore COMMAND ARGUMENTS\n\n");
-    printf("COMMAND should be one of:\n");
+    printf("Supported commands and usage:\n");
     for (int i = 0; i < NUM_FUNCTION_RECORDS; ++i) {
-        printf("   %s\n", FUNCTION_RECORDS[i].szName);
+        printf("   ");
+        printFuncUsage(&FUNCTION_RECORDS[i]);
+    }
+    printColumns(NUM_NAMED_COLORS, NAMED_COLORS, sizeof(*NAMED_COLORS), 6);
+    printf("\n\n\
+COLOR argument(s) should be given as color names, or hex values like ff0000.\n\
+SPEED argument should be given as slow, medium, or fast, or integers 1 - 3.\n\
+BRIGHTNESS values should be given as off, low, medium, high, or integers 0 - 3.\
+\n\n");
+}
+
+void printArg(const Argument *arg) {
+    switch (arg->type) {
+        case AK_UNSPECIFIED:
+            printf("[unspecified]");
+            return;
+        case AK_COLOR:
+            printf("rgb(%d, %d, %d)",
+                   arg->v.color.nRed, arg->v.color.nGreen, arg->v.color.nBlue);
+            return;
+        case AK_SCALAR:
+            printf("%d", arg->v.scalar);
+            return;
+        case AK_AUTOMATIC:
+            printf("[auto]");
+            return;
     }
 }
 
+void
+printMessages(const Messages *messages) {
+    printf("constructed %d messages:\n", messages->nMessages);
+    for (int i = 0; i < messages->nMessages; ++i) {
+        printf("message %d: ", i);
+        for (int j = 0; j < MESSAGE_LENGTH; j++) {
+            printf("%02x ", messages->messages[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+// C99 does not support strcasecmp
+int StrCaseEq(const char *a, const char *b) {
+  char la, lb;
+  while (*a && *b) {
+    la = *a >= 'a' && *a <= 'z' ? *++a - ('a' - 'A') : *a;
+    lb = *b >= 'a' && *b <= 'z' ? *++b - ('a' - 'A') : *b;
+    if (la != lb) return 0;
+  }
+  return *a == *b;
+}
+
 int
-parseColor(char *arg, Color *pResult) {
+parseColor(const char *arg, const Argument *defaultValue, Argument *pResult) {
     V(printf("parse color %s\n", arg));
-    uint32_t v = 0;
+    pResult->type = AK_COLOR;
+    Color *col = &pResult->v.color;
+    for (int i = 0; i < NUM_NAMED_COLORS; ++i) {
+        if (StrCaseEq(arg, NAMED_COLORS[i].name)) {
+            col->nRed =   NAMED_COLORS[i].color.nRed;
+            col->nGreen = NAMED_COLORS[i].color.nGreen;
+            col->nBlue =  NAMED_COLORS[i].color.nBlue;
+            return 0;
+        }
+    }
     if (strlen(arg) != 6) goto fail;
+    uint32_t v = 0;
     for (int i = 0; i < 6; ++i) {
         if (!isxdigit(arg[i])) goto fail;
     }
     v = (uint32_t)strtol(arg, 0, 16);
     if (errno == ERANGE) goto fail;
-    pResult->nRed = (v >> 16) & 0xff;
-    pResult->nGreen = (v >> 8) & 0xff;
-    pResult->nBlue = v & 0xff;
-    V(printf("interpreted color %d %d %d\n", pResult->nRed, pResult->nGreen, pResult->nBlue));
+    pResult->v.color.nRed = (v >> 16) & 0xff;
+    pResult->v.color.nGreen = (v >> 8) & 0xff;
+    pResult->v.color.nBlue = v & 0xff;
+    V(printf("Interpreted color %d %d %d\n",
+             col->nRed, col->nGreen, col->nBlue));
     return 0;
 fail:
-    fprintf(stderr, "Could not interpret color parameter value %s\n", arg);
-    fprintf(stderr, "Please give this value as a six-character hex string like ff0000.\n");
+    if (defaultValue->type) {
+      *pResult = *defaultValue;
+      return 1;
+    }
+    fprintf(stderr, "Could not interpret color parameter value `%s`\n", arg);
+    fprintf(stderr, "Please name a color, or give this value as a six-character"
+                    " hex string like ff0000.\n");
     return -1;
 }
 
 int
-parseScalar(char *arg, ScalarDef type, int *pResult) {
-    V(printf("parse speed %s\n", arg));
-    long nSpeed = strtol(arg, 0, 0);
-    if (errno == ERANGE || nSpeed < type.min || nSpeed > type.max) {
-        fprintf(stderr, "Could not interpret %s parameter value %s\n"
-                "Please give this value as an integer from %d to %d.\n",
-                type.name, arg, type.min, type.max);
+parseScalar(const char *arg, int num_named_vals, const NamedScalar *named_vals,
+            int min, int max, const Argument *defaultValue, Argument *pResult) {
+    for (int i = 0; i < num_named_vals; ++i) {
+        if (StrCaseEq(arg, named_vals[i].name)) {
+            pResult->v.scalar = named_vals[i].value;
+            return 0;
+        }
+    }
+    long nScalar = strtol(arg, 0, 0);
+    if (errno == ERANGE || nScalar < min || nScalar > max) {
+        if (defaultValue->type) {
+          *pResult = *defaultValue;
+          return 1;
+        }
         return -1;
     }
-    *pResult = nSpeed;
+    V(printf("Parsed as %ld\n", nScalar));
+    pResult->v.scalar = nScalar;
     return 0;
+}
+
+int
+parseSpeed(const char *arg, const Argument *defaultValue, Argument *pResult) {
+    V(printf("parse speed %s\n", arg));
+    int r = parseScalar(arg, NUM_NAMED_SPEEDS, NAMED_SPEEDS, 1, 3,
+                        defaultValue, pResult);
+    if (r < 0) {
+        fprintf(stderr, "Could not interpret speed parameter value `%s`\n"
+                "Please give this value as 1 (slow), 2 (medium), or 3 (fast).\n",
+                arg);
+    }
+    return r;
+}
+
+int
+parseBrightness(const char *arg, const Argument *defValue, Argument *pResult) {
+    V(printf("parse brightness %s\n", arg));
+    int r = parseScalar(arg, NUM_NAMED_BRIGHTNESSES, NAMED_BRIGHTNESSES, 0, 3,
+                        defValue, pResult);
+    if (r < 0) {
+        fprintf(stderr, "Could not interpret brightness parameter value `%s`\n"
+                "Please give this value as 0 (off), 1 (dim), 2 (medium), or 3 "
+                "(bright).\n", arg);
+    }
+    return r;
 }
 
 int
 parseArguments(int argc, char **argv, Messages *messages) {
     int                   nRetval;
-    Arguments             args;
+    Arguments             args          = {0};
     int                   nArgs         = 0;
+    int                   nArgsRead     = 0;
     const FunctionRecord *pDesiredFunc  = 0;
-    int                   nColors       = 0;
-    int                   nScalars      = 0;
 
     // check for command line options
     while ((nRetval = getopt(argc, argv, "v")) != -1) {
@@ -370,76 +538,84 @@ parseArguments(int argc, char **argv, Messages *messages) {
                 break;
             }
         }
+    } else {
+        usage();
+        return -1;
+    }
+    if (!pDesiredFunc) {
+        for (int i = 0; i < NUM_NAMED_COLORS; ++i) {
+            if (StrCaseEq(argv[optind], NAMED_COLORS[i].name)) {
+                args[0].v.color = NAMED_COLORS[i].color;
+                single_static(args, messages);
+                V(printMessages(messages));
+                return 0;
+            }
+        }
     }
     if (!pDesiredFunc) {
         usage();
         return -1;
     }
     // check that the function signature is satisfied
-    if (nArgs != (1 + pDesiredFunc->nColors + pDesiredFunc->nScalars)) {
+    int min_args = 0;
+    for (int i = 0; i < pDesiredFunc->nArgs; ++i) {
+      if (!pDesiredFunc->args[i].defaultValue.type) ++min_args;
+    }
+    if (nArgs - 1 < min_args || nArgs - 1 > pDesiredFunc->nArgs) {
         usage();
-        printf("\nFunction %s takes ", pDesiredFunc->szName);
-        if (pDesiredFunc->nColors > 0) {
-            if (pDesiredFunc->nScalars == 1) {
-                printf("%d color(s) and a speed", pDesiredFunc->nColors);
-            } else if (pDesiredFunc->nScalars) {
-                printf("%d color(s) and %d integers",
-                       pDesiredFunc->nColors, pDesiredFunc->nScalars);
-            } else {
-                printf("%d color(s)", pDesiredFunc->nColors);
-            }
+        if (min_args == pDesiredFunc->nArgs) {
+            printf("\nFunction %s takes %d arguments:\n",
+                   pDesiredFunc->szName, pDesiredFunc->nArgs);
         } else {
-            if (pDesiredFunc->nScalars == 1) {
-                const ScalarDef *d = pDesiredFunc->scalars;
-                printf("a single integer from %d to %d", d->min, d->max);
-            } else if (pDesiredFunc->nScalars) {
-                printf("%d integers", pDesiredFunc->nScalars);
-            } else {
-                printf("no arguments");
-            }
+            printf("\nFunction %s takes %d-%d arguments:\n",
+                   pDesiredFunc->szName, min_args, pDesiredFunc->nArgs);
         }
-        printf(":\n   rogauracore %s ", pDesiredFunc->szName);
-        for (int i = 0; i < pDesiredFunc->nColors; i++) {
-            printf("COLOR%d ", i+1);
-        }
-        for (int i = 0; i < pDesiredFunc->nScalars; i++) {
-            printf("%s ", pDesiredFunc->scalars[i].NAME);
-        }
-        printf("\n\nCOLOR argument(s) should be given as hex values like ff0000\n");
-        printf("SPEED argument should be given as an integer: 1, 2, or 3\n");
+        printf("   rogauracore ");
+        printFuncUsage(pDesiredFunc);
         return -1;
     }
     // parse the argument values
+    nArgsRead = 0;
     for (int i = optind + 1; i < argc; ++i) {
-        if (nColors < pDesiredFunc->nColors) {
-            nRetval = parseColor(argv[i], &(args.colors[nColors]));
-            if (nRetval < 0) return -1;
-            nColors++;
-        } else if (nScalars < pDesiredFunc->nScalars) {
-            nRetval = parseScalar(argv[i], pDesiredFunc->scalars[nScalars],
-                                  &(args.scalars[nScalars]));
-            if (nRetval < 0) return -1;
-            nScalars++;
+        int r;
+        V(printf("Reading argument %d (%s)\n", optind, argv[optind]));
+        for (;;) {
+            const ArgumentDef *arg = &pDesiredFunc->args[nArgsRead];
+            if (nArgsRead >= pDesiredFunc->nArgs) {
+                fprintf(stderr, "Extra (unrecognized) argument `%s`.\n"
+                        "Please check your argument order and correct or remove"
+                        " this argument.\n", argv[i]);
+                printFuncUsage(pDesiredFunc);
+                return -1;
+            }
+            if (!arg->parse) {
+                fprintf(stderr, "Internal error: no parser for %s argument.\n",
+                        arg->name ? arg->name : "null");
+                return -1;
+            }
+            r = arg->parse(argv[i], &pDesiredFunc->args[nArgsRead].defaultValue,
+                           &args[nArgsRead]);
+            ++nArgsRead;
+            if (!r) break;
+            if (r != 1) {
+                V(printf("Parser didn't like the value and argument isn't "
+                         "optional; giving up.\n"));
+                return r;
+            }
         }
+    }
+    
+    while (nArgsRead < pDesiredFunc->nArgs) {
+        args[nArgsRead] = pDesiredFunc->args[nArgsRead].defaultValue;
+        ++nArgsRead;
     }
     V(printf("args:\n"));
-    for (int i = 0; i < MAX_NUM_COLORS; ++i) {
-        V(printf("color%d %d %d %d\n", i + 1, args.colors[i].nRed, args.colors[i].nGreen, args.colors[i].nBlue));
-    }
-    for (int i = 0; i < pDesiredFunc->nScalars; ++i) {
-      V(printf("%s %d\n", pDesiredFunc->scalars[i].name, args.scalars[i]));
+    for (int i = 0; i < MAX_NUM_ARGUMENTS; ++i) {
+        V(printArg(&args[i]));
     }
     // call the function the user wants
-    pDesiredFunc->function(&args, messages);
-    V(printf("constructed %d messages:\n", messages->nMessages));
-    for (int i = 0; i < messages->nMessages; ++i) {
-        V(printf("message %d: ", i));
-        for (int j = 0; j < MESSAGE_LENGTH; j++)
-        {
-            V(printf("%02x ", messages->messages[i][j]));
-        }
-        V(printf("\n"));
-    }
+    pDesiredFunc->function(args, messages);
+    V(printMessages(messages));
     return 0;
 }
 
