@@ -41,6 +41,9 @@
 
 #if HAVE_UNISTD_H
 #  include <unistd.h>
+#else
+int getopt(int argc, char * const argv[], const char *optstring);
+extern int optind;
 #endif
 
 #if HAVE_ERRNO_H
@@ -97,7 +100,7 @@ typedef struct {
     union {
       Color color;
       int scalar;
-    };
+    } v;
 } Argument;
 
 typedef Argument Arguments[MAX_NUM_ARGUMENTS];
@@ -151,9 +154,9 @@ single_static(Arguments args, Messages *outputs) {
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
     initMessage(m);
-    m[4] = args[0].color.nRed;
-    m[5] = args[0].color.nGreen;
-    m[6] = args[0].color.nBlue;
+    m[4] = args[0].v.color.nRed;
+    m[5] = args[0].v.color.nGreen;
+    m[6] = args[0].v.color.nBlue;
 }
 
 void
@@ -164,14 +167,14 @@ single_breathing(Arguments args, Messages *outputs) {
     uint8_t *m = outputs->messages[0];
     initMessage(m);
     m[3] = 1;
-    m[4] = args[0].color.nRed;
-    m[5] = args[0].color.nGreen;
-    m[6] = args[0].color.nBlue;
-    m[7] = speedByteValue(args[2].scalar);
+    m[4] = args[0].v.color.nRed;
+    m[5] = args[0].v.color.nGreen;
+    m[6] = args[0].v.color.nBlue;
+    m[7] = speedByteValue(args[2].v.scalar);
     m[9] = 1;
-    m[10] = args[1].color.nRed;
-    m[11] = args[1].color.nGreen;
-    m[12] = args[1].color.nBlue;
+    m[10] = args[1].v.color.nRed;
+    m[11] = args[1].v.color.nGreen;
+    m[12] = args[1].v.color.nBlue;
 }
 
 void
@@ -181,10 +184,10 @@ single_pulsing(Arguments args, Messages *outputs) {
     uint8_t *m = outputs->messages[0];
     initMessage(m);
     m[3] = 0x0a;
-    m[4] = args[0].color.nRed;
-    m[5] = args[0].color.nGreen;
-    m[6] = args[0].color.nBlue;
-    m[7] = speedByteValue(args[1].scalar);
+    m[4] = args[0].v.color.nRed;
+    m[5] = args[0].v.color.nGreen;
+    m[6] = args[0].v.color.nBlue;
+    m[7] = speedByteValue(args[1].v.scalar);
 }
 
 void
@@ -195,7 +198,7 @@ single_colorcycle(Arguments args, Messages *outputs) {
     initMessage(m);
     m[3] = 2;
     m[4] = 0xff;
-    m[7] = speedByteValue(args[0].scalar);
+    m[7] = speedByteValue(args[0].v.scalar);
 }
 
 void
@@ -206,9 +209,9 @@ multi_static(Arguments args, Messages *outputs) {
         uint8_t *m = outputs->messages[i];
         initMessage(m);
         m[2] = i + 1;
-        m[4] = args[i].color.nRed;
-        m[5] = args[i].color.nGreen;
-        m[6] = args[i].color.nBlue;
+        m[4] = args[i].v.color.nRed;
+        m[5] = args[i].v.color.nGreen;
+        m[6] = args[i].v.color.nBlue;
         m[7] = 0xeb;
     }
 }
@@ -222,10 +225,10 @@ multi_breathing(Arguments args, Messages *outputs) {
         initMessage(m);
         m[2] = i + 1;
         m[3] = 1;
-        m[4] = args[i].color.nRed;
-        m[5] = args[i].color.nGreen;
-        m[6] = args[i].color.nBlue;
-        m[7] = speedByteValue(args[0].scalar);
+        m[4] = args[i].v.color.nRed;
+        m[5] = args[i].v.color.nGreen;
+        m[6] = args[i].v.color.nBlue;
+        m[7] = speedByteValue(args[0].v.scalar);
     }
 }
 
@@ -238,7 +241,7 @@ rainbow(Arguments args, Messages *outputs) {
     m[4] = 0x08;
     m[5] = 0xff;
     m[6] = 0xf0;
-    m[7] = speedByteValue(args[0].scalar);
+    m[7] = speedByteValue(args[0].v.scalar);
     outputs->nMessages = 1;
 }
 
@@ -246,7 +249,7 @@ void
 set_brightness(Arguments args, Messages *outputs) {
     V(printf("single_static\n"));
     memcpy(outputs->messages[0], MESSAGE_BRIGHTNESS, MESSAGE_LENGTH);
-    outputs->messages[0][BRIGHTNESS_OFFSET] = args[0].scalar;
+    outputs->messages[0][BRIGHTNESS_OFFSET] = args[0].v.scalar;
     outputs->nMessages = 1;
     outputs->setAndApply = 0;
 }
@@ -262,31 +265,23 @@ parseSpeed(const char *arg, const Argument *defaultValue, Argument *pResult);
 int
 parseBrightness(const char *arg, const Argument *defaultValue, Argument *pResult);
 
-const Argument NO_DEFAULT =  { .type = AK_UNSPECIFIED };
-const Argument ZERO =  { .type = AK_SCALAR, .scalar = 0 };
-const Argument ONE =   { .type = AK_SCALAR, .scalar = 1 };
-const Argument TWO =   { .type = AK_SCALAR, .scalar = 2 };
-const Argument THREE = { .type = AK_SCALAR, .scalar = 3 };
-const Argument AUTO =  { .type = AK_AUTOMATIC };
+#define NO_DEFAULT        { .type = AK_UNSPECIFIED }
+#define SCALAR_DEFAULT(x) { .type = AK_SCALAR, .v.scalar = (x) }
+#define AUTO              { .type = AK_AUTOMATIC }
 
-const ArgumentDef COLOR =  {"COLOR",  AK_COLOR, parseColor, NO_DEFAULT};
-const ArgumentDef COLOR1 = {"COLOR1", AK_COLOR, parseColor, NO_DEFAULT};
-const ArgumentDef COLOR2 = {"COLOR2", AK_COLOR, parseColor, NO_DEFAULT};
-const ArgumentDef COLOR3 = {"COLOR3", AK_COLOR, parseColor, NO_DEFAULT};
-const ArgumentDef COLOR4 = {"COLOR4", AK_COLOR, parseColor, NO_DEFAULT};
-const ArgumentDef SPEED =  {"SPEED", AK_SCALAR, parseSpeed, NO_DEFAULT};
-const ArgumentDef BRIGHTNESS = {"BRIGHTNESS", AK_SCALAR, parseBrightness, NO_DEFAULT};
+#define COLOR      {"COLOR",      AK_COLOR,  parseColor,      NO_DEFAULT}
+#define COLORN(n)  {"COLOR" #n,   AK_COLOR,  parseColor,      NO_DEFAULT}
+#define SPEED      {"SPEED",      AK_SCALAR, parseSpeed,      NO_DEFAULT}
+#define BRIGHTNESS {"BRIGHTNESS", AK_SCALAR, parseBrightness, NO_DEFAULT}
 
-const ArgumentDef COLOR2_OR_AUTO = {"COLOR2", AK_COLOR,  parseColor, AUTO};
-const ArgumentDef SPEED_OR_TWO   =  {"SPEED", AK_SCALAR, parseSpeed, TWO};
-const ArgumentDef SPEED_OR_THREE =  {"SPEED", AK_SCALAR, parseSpeed, THREE};
+#define COLOR_OR(x)     {"COLOR",    AK_COLOR,  parseColor,   x}
+#define COLORN_OR(n, x) {"COLOR" #n, AK_COLOR,  parseColor,   x}
+#define SPEED_OR(x)     {"SPEED",    AK_SCALAR, parseSpeed,   x}
 
 const FunctionRecord FUNCTION_RECORDS[] = {
-    {"single_static", &single_static, 1, {
-        COLOR
-    }},
+    {"single_static", &single_static, 1, {COLOR}},
     {"single_breathing", &single_breathing, 3, {
-        COLOR1, COLOR2_OR_AUTO, SPEED_OR_TWO
+        COLORN(1), COLORN_OR(2, AUTO), SPEED_OR(SCALAR_DEFAULT(2))
     }},
     {"single_pulsing", &single_pulsing, 2, {
         COLOR, SPEED
@@ -295,13 +290,13 @@ const FunctionRecord FUNCTION_RECORDS[] = {
         SPEED
     }},
     {"multi_static", &multi_static, 4, {
-        COLOR1, COLOR2, COLOR3, COLOR4
+        COLORN(1), COLORN(2), COLORN(3), COLORN(4)
     }},
     {"multi_breathing", &multi_breathing, 5, {
-        COLOR1, COLOR2, COLOR3, COLOR4, SPEED
+        COLORN(1), COLORN(2), COLORN(3), COLORN(4), SPEED
     }},
     {"rainbow", &rainbow, 1, {
-        SPEED_OR_THREE
+        SPEED_OR(SCALAR_DEFAULT(3))
     }},
     {"brightness", &set_brightness, 1, {
         BRIGHTNESS
@@ -352,7 +347,7 @@ printFuncUsage(const FunctionRecord *func) {
     for (int i = 0; i < func->nArgs; ++i) {
         const ArgumentDef *arg = &func->args[i];
         printf(arg->defaultValue.type ? " [" : " ");
-        printf(arg->name);
+        printf("%s", arg->name);
         if (arg->defaultValue.type) printf("]");
     }
     printf("\n");
@@ -395,10 +390,10 @@ void printArg(const Argument *arg) {
             return;
         case AK_COLOR:
             printf("rgb(%d, %d, %d)",
-                   arg->color.nRed, arg->color.nGreen, arg->color.nBlue);
+                   arg->v.color.nRed, arg->v.color.nGreen, arg->v.color.nBlue);
             return;
         case AK_SCALAR:
-            printf("%d", arg->scalar);
+            printf("%d", arg->v.scalar);
             return;
         case AK_AUTOMATIC:
             printf("[auto]");
@@ -418,13 +413,24 @@ printMessages(const Messages *messages) {
     }
 }
 
+// C99 does not support strcasecmp
+int StrCaseEq(const char *a, const char *b) {
+  char la, lb;
+  while (*a && *b) {
+    la = *a >= 'a' && *a <= 'z' ? *++a - ('a' - 'A') : *a;
+    lb = *b >= 'a' && *b <= 'z' ? *++b - ('a' - 'A') : *b;
+    if (la != lb) return 0;
+  }
+  return *a == *b;
+}
+
 int
 parseColor(const char *arg, const Argument *defaultValue, Argument *pResult) {
     V(printf("parse color %s\n", arg));
     pResult->type = AK_COLOR;
-    Color *col = &pResult->color;
+    Color *col = &pResult->v.color;
     for (int i = 0; i < NUM_NAMED_COLORS; ++i) {
-        if (!strcasecmp(arg, NAMED_COLORS[i].name)) {
+        if (StrCaseEq(arg, NAMED_COLORS[i].name)) {
             col->nRed =   NAMED_COLORS[i].color.nRed;
             col->nGreen = NAMED_COLORS[i].color.nGreen;
             col->nBlue =  NAMED_COLORS[i].color.nBlue;
@@ -438,9 +444,9 @@ parseColor(const char *arg, const Argument *defaultValue, Argument *pResult) {
     }
     v = (uint32_t)strtol(arg, 0, 16);
     if (errno == ERANGE) goto fail;
-    pResult->color.nRed = (v >> 16) & 0xff;
-    pResult->color.nGreen = (v >> 8) & 0xff;
-    pResult->color.nBlue = v & 0xff;
+    pResult->v.color.nRed = (v >> 16) & 0xff;
+    pResult->v.color.nGreen = (v >> 8) & 0xff;
+    pResult->v.color.nBlue = v & 0xff;
     V(printf("Interpreted color %d %d %d\n",
              col->nRed, col->nGreen, col->nBlue));
     return 0;
@@ -459,8 +465,8 @@ int
 parseScalar(const char *arg, int num_named_vals, const NamedScalar *named_vals,
             int min, int max, const Argument *defaultValue, Argument *pResult) {
     for (int i = 0; i < num_named_vals; ++i) {
-        if (!strcasecmp(arg, named_vals[i].name)) {
-            pResult->scalar = named_vals[i].value;
+        if (StrCaseEq(arg, named_vals[i].name)) {
+            pResult->v.scalar = named_vals[i].value;
             return 0;
         }
     }
@@ -473,7 +479,7 @@ parseScalar(const char *arg, int num_named_vals, const NamedScalar *named_vals,
         return -1;
     }
     V(printf("Parsed as %ld\n", nScalar));
-    pResult->scalar = nScalar;
+    pResult->v.scalar = nScalar;
     return 0;
 }
 
@@ -538,8 +544,8 @@ parseArguments(int argc, char **argv, Messages *messages) {
     }
     if (!pDesiredFunc) {
         for (int i = 0; i < NUM_NAMED_COLORS; ++i) {
-            if (!strcasecmp(argv[optind], NAMED_COLORS[i].name)) {
-                args[0].color = NAMED_COLORS[i].color;
+            if (StrCaseEq(argv[optind], NAMED_COLORS[i].name)) {
+                args[0].v.color = NAMED_COLORS[i].color;
                 single_static(args, messages);
                 V(printMessages(messages));
                 return 0;
