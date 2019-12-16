@@ -98,9 +98,6 @@ typedef struct {
     ScalarDef scalars[MAX_NUM_SCALARS];
 } FunctionRecord;
 
-const ScalarDef SPEED = { "SPEED", "speed", 1, 3 };
-const ScalarDef BRIGHTNESS = { "BRIGHTNESS", "brightness", 0, 3 };
-
 // ------------------------------------------------------------
 //  USB protocol for RGB keyboard
 // ------------------------------------------------------------
@@ -272,6 +269,9 @@ rainbow(Arguments *args, Messages *messages) {
 // ------------------------------------------------------------
 //  Command line argument parsing
 // ------------------------------------------------------------
+
+#define SPEED { "SPEED", "speed", 1, 3 }
+#define BRIGHTNESS { "BRIGHTNESS", "brightness", 0, 3 }
 
 const FunctionRecord FUNCTION_RECORDS[] = {
     {"single_static", &single_static, 1, 0},
