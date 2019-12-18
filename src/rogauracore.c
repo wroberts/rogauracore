@@ -295,7 +295,7 @@ const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTIO
 
 void
 usage() {
-    printf("rogauracore - RGB keyboard control for Asus ROG laptops\n");
+    printf("%s - RGB keyboard control for Asus ROG laptops\n", PACKAGE_STRING);
     printf("(c) 2019 Will Roberts\n\n");
     printf("Usage:\n");
     printf("   rogauracore COMMAND ARGUMENTS\n\n");
