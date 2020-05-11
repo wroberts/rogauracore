@@ -25,6 +25,7 @@ COMMAND should be one of:
    green
    blue
    yellow
+   gold
    cyan
    magenta
    white
