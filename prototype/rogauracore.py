@@ -179,6 +179,7 @@ COLOR_FUNCS = [
     red,
     green,
     yellow,
+    gold,
     blue,
     white,
 ]
