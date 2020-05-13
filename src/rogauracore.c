@@ -112,6 +112,7 @@ const int BRIGHTNESS_OFFSET = 4;
 uint8_t MESSAGE_BRIGHTNESS[MESSAGE_LENGTH] = {0x5a, 0xba, 0xc5, 0xc4};
 uint8_t MESSAGE_SET[MESSAGE_LENGTH] = {0x5d, 0xb5};
 uint8_t MESSAGE_APPLY[MESSAGE_LENGTH] = {0x5d, 0xb4};
+uint8_t MESSAGE_INITIALIZE_KEYBOARD[MESSAGE_LENGTH] = {0x5a, 0x41, 0x53, 0x55, 0x53, 0x20, 0x54, 0x65, 0x63, 0x68, 0x2e, 0x49, 0x6e, 0x63, 0x2e, 0x00};
 
 void
 initMessage(uint8_t *msg) {
@@ -195,6 +196,13 @@ set_brightness(Arguments *args, Messages *outputs) {
     V(printf("single_static\n"));
     memcpy(outputs->messages[0], MESSAGE_BRIGHTNESS, MESSAGE_LENGTH);
     outputs->messages[0][BRIGHTNESS_OFFSET] = args->scalars[0];
+    outputs->nMessages = 1;
+    outputs->setAndApply = 0;
+}
+
+void initialize_keyboard(Arguments *args, Messages *outputs) {
+        V(printf("initialize_keyboard\n"));
+    memcpy(outputs->messages[0], MESSAGE_INITIALIZE_KEYBOARD, MESSAGE_LENGTH);
     outputs->nMessages = 1;
     outputs->setAndApply = 0;
 }
@@ -289,6 +297,7 @@ const FunctionRecord FUNCTION_RECORDS[] = {
     {"black", &black, 0, 0},
     {"rainbow", &rainbow, 0, 0},
     {"brightness", &set_brightness, 0, 1, {BRIGHTNESS}},
+    {"initialize_keyboard", &initialize_keyboard, 0, 0},
 };
 
 const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTION_RECORDS[0]));
