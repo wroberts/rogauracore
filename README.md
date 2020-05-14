@@ -31,6 +31,8 @@ COMMAND should be one of:
    white
    black
    rainbow
+   brightness
+   initialize_keyboard
 ```
 
 ## Building
@@ -39,8 +41,8 @@ COMMAND should be one of:
 
 ```
 sudo apt install libusb-1.0-0 libusb-1.0-0-dev
-tar xf rogauracore-1.0.tar.gz
-cd rogauracore-1.0/
+tar xf rogauracore-1.3.tar.gz
+cd rogauracore-1.3/
 ./configure
 make
 sudo make install
