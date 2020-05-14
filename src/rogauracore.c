@@ -211,6 +211,7 @@ const uint8_t RED[] = { 0xff, 0x00, 0x00 };
 const uint8_t GREEN[] = { 0x00, 0xff, 0x00 };
 const uint8_t BLUE[] = { 0x00, 0x00, 0xff };
 const uint8_t YELLOW[] = { 0xff, 0xff, 0x00 };
+const uint8_t GOLD[] = { 0xff, 0x8C, 0x00 };
 const uint8_t CYAN[] = { 0x00, 0xff, 0xff };
 const uint8_t MAGENTA[] = { 0xff, 0x00, 0xff };
 const uint8_t WHITE[] = { 0xff, 0xff, 0xff };
@@ -237,6 +238,12 @@ blue(Arguments *args, Messages *messages) {
 void
 yellow(Arguments *args, Messages *messages) {
     memcpy(args->colors, YELLOW, 3);
+    single_static(args, messages);
+}
+
+void
+gold(Arguments *args, Messages *messages) {
+    memcpy(args->colors, GOLD, 3);
     single_static(args, messages);
 }
 
@@ -291,6 +298,7 @@ const FunctionRecord FUNCTION_RECORDS[] = {
     {"green", &green, 0, 0},
     {"blue", &blue, 0, 0},
     {"yellow", &yellow, 0, 0},
+    {"gold", &gold, 0, 0},
     {"cyan", &cyan, 0, 0},
     {"magenta", &magenta, 0, 0},
     {"white", &white, 0, 0},
