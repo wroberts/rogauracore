@@ -35,14 +35,35 @@ COMMAND should be one of:
    initialize_keyboard
 ```
 
+In typical use, you will need root privileges to directly communicate
+with the laptop's keyboard.  This is easy to do with `sudo`.  Try some
+of these commands and see what works for you:
+
+```
+sudo rogauracore single_static 0000ff
+sudo rogauracore single_static 00ff00
+sudo rogauracore single_static ffff00
+sudo rogauracore multi_static ff0000 ffff00 00ff00 00ffff
+sudo rogauracore single_colorcycle 1
+```
+
+If your keyboard does not respond to `rogauracore`, it may help to
+send an initialisation message to the keyboard to "wake it up":
+
+```
+sudo rogauracore initialize_keyboard
+```
+
 ## Building
 
 ### On Ubuntu from a release:
 
 ```
 sudo apt install libusb-1.0-0 libusb-1.0-0-dev
-tar xf rogauracore-1.3.tar.gz
-cd rogauracore-1.3/
+VERSION=1.3
+curl -LOs https://github.com/wroberts/rogauracore/releases/download/$VERSION/rogauracore-$VERSION.tar.gz
+tar xf rogauracore-$VERSION.tar.gz
+cd rogauracore-$VERSION/
 ./configure
 make
 sudo make install
