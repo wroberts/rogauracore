@@ -417,8 +417,8 @@ printMessages(const Messages *messages) {
 int StrCaseEq(const char *a, const char *b) {
   char la, lb;
   while (*a && *b) {
-    la = *a >= 'a' && *a <= 'z' ? *++a - ('a' - 'A') : *a;
-    lb = *b >= 'a' && *b <= 'z' ? *++b - ('a' - 'A') : *b;
+    la = *a >= 'a' && *a <= 'z' ? *++a - ('a' - 'A') : *++a;
+    lb = *b >= 'a' && *b <= 'z' ? *++b - ('a' - 'A') : *++b;
     if (la != lb) return 0;
   }
   return *a == *b;
