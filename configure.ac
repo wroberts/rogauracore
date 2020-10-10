@@ -11,7 +11,7 @@ AM_INIT_AUTOMAKE([1.9 foreign subdir-objects])
 AC_PROG_CC
 
 # Checks for libraries.
-AC_SEARCH_LIBS([libusb_init], [usb-1.0])
+AC_SEARCH_LIBS([libusb_init], [usb-1.0], [], [AC_MSG_ERROR([libusb library not found])])
 
 # Checks for header files.
 AC_HEADER_STDC
