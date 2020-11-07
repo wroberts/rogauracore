@@ -626,6 +626,7 @@ main(int argc, char **argv) {
     Messages messages;
     messages.setAndApply = 1;
     if (parseArguments(argc, argv, &messages) == 0) {
-        handleUsb(&messages);
+        return handleUsb(&messages);
     }
+    return -1;
 }
