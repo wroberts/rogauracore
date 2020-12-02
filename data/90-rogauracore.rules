@@ -1,0 +1,8 @@
+# udev rules for user control over ROG USB RGB keyboard backlight control (i.e "ROG Aura Core")
+
+# GL553, GL753
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1854", MODE="0666", TAG+="uaccess"
+# GL503, FX503, GL703
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1869", MODE="0666", TAG+="uaccess"
+# GL504, GL703, GX501, GM501
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1866", MODE="0666", TAG+="uaccess"
