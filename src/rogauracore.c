@@ -192,6 +192,20 @@ multi_breathing(Arguments *args, Messages *outputs) {
 }
 
 void
+rainbow_cycle(Arguments *args, Messages *outputs) {
+    static int ind_off = 0;
+    V(printf("rainbow_cycle\n"));
+    outputs->nMessages = 4;
+    for (int i = 0; i < 6; ++i) {
+        uint8_t *m = outputs->messages[i];
+        initMessage(m);
+        m[3] = 3;
+        m[4] = 0xff;
+        m[7] = speedByteValue(args->scalars[0]);
+    }
+}
+
+void
 set_brightness(Arguments *args, Messages *outputs) {
     V(printf("single_static\n"));
     memcpy(outputs->messages[0], MESSAGE_BRIGHTNESS, MESSAGE_LENGTH);
@@ -294,6 +308,7 @@ const FunctionRecord FUNCTION_RECORDS[] = {
     {"single_colorcycle", &single_colorcycle, 0, 1, {SPEED}},
     {"multi_static", &multi_static, 4, 0},
     {"multi_breathing", &multi_breathing, 4, 1, {SPEED}},
+    {"rainbow_cycle", &rainbow_cycle, 0, 1, {SPEED}},
     {"red", &red, 0, 0},
     {"green", &green, 0, 0},
     {"blue", &blue, 0, 0},
