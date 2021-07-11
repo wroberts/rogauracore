@@ -56,6 +56,8 @@ sudo rogauracore initialize_keyboard
 
 ## Installation
 
+### Ubuntu
+
 In all cases you will need `libusb` and `libusb-dev` installed:
 ```sh
 sudo apt install libusb-1.0-0 libusb-1.0-0-dev
@@ -64,7 +66,6 @@ Optionally you might also need build tools:
 ```sh
 sudo apt install build-essential
 ```
-### Ubuntu
 
 1. Retrieve the `rogauracore` package, either through `curl` or `git`:
 ```sh
