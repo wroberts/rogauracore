@@ -91,3 +91,12 @@ this command after `rogauracore`:
 ```sh
 sudo systemctl restart upower.service
 ```
+
+## Related projects
+
+- [rogauracore-gui](https://github.com/rastafaninplakeibol/rogauracore-gui)
+  is an Electron-based GUI for `rogauracore` by
+  [@rastafaninplakeibol](https://github.com/rastafaninplakeibol).
+
+- [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB) can probably
+  do all the things that `rogauracore` can do.
