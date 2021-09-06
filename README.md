@@ -60,7 +60,7 @@ sudo rogauracore initialize_keyboard
 
 ```
 sudo apt install libusb-1.0-0 libusb-1.0-0-dev
-VERSION=1.4
+VERSION=1.5
 curl -LOs https://github.com/wroberts/rogauracore/releases/download/$VERSION/rogauracore-$VERSION.tar.gz
 tar xf rogauracore-$VERSION.tar.gz
 cd rogauracore-$VERSION/
