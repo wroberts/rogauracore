@@ -54,6 +54,12 @@ send an initialisation message to the keyboard to "wake it up":
 sudo rogauracore initialize_keyboard
 ```
 
+If your keyboard remains dark, its brightness might have defaulted to 0. Try:
+
+```
+sudo rogauracore brightness 3
+```
+
 ## Building
 
 ### On Ubuntu from a release:
