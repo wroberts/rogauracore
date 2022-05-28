@@ -76,7 +76,7 @@ sudo apt install build-essential
 
 Retrieve the `rogauracore` package, either through `curl` or `git`:
 ```sh
-VERSION=1.5
+VERSION=1.6
 curl -LOs https://github.com/wroberts/rogauracore/releases/download/$VERSION/rogauracore-$VERSION.tar.gz
 tar xf rogauracore-$VERSION.tar.gz
 cd rogauracore-$VERSION/
