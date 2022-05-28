@@ -21,6 +21,7 @@ COMMAND should be one of:
    single_colorcycle
    multi_static
    multi_breathing
+   rainbow_cycle
    red
    green
    blue
