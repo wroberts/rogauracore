@@ -54,6 +54,12 @@ send an initialisation message to the keyboard to "wake it up":
 sudo rogauracore initialize_keyboard
 ```
 
+If your keyboard remains dark, its brightness might have defaulted to 0. Try:
+
+```sh
+sudo rogauracore brightness 3
+```
+
 ## Installation
 
 ### Ubuntu
@@ -67,9 +73,9 @@ Optionally you might also need build tools:
 sudo apt install build-essential
 ```
 
-1. Retrieve the `rogauracore` package, either through `curl` or `git`:
+Retrieve the `rogauracore` package, either through `curl` or `git`:
 ```sh
-VERSION=1.4
+VERSION=1.5
 curl -LOs https://github.com/wroberts/rogauracore/releases/download/$VERSION/rogauracore-$VERSION.tar.gz
 tar xf rogauracore-$VERSION.tar.gz
 cd rogauracore-$VERSION/
@@ -100,3 +106,12 @@ this command after `rogauracore`:
 ```sh
 sudo systemctl restart upower.service
 ```
+
+## Related projects
+
+- [rogauracore-gui](https://github.com/rastafaninplakeibol/rogauracore-gui)
+  is an Electron-based GUI for `rogauracore` by
+  [@rastafaninplakeibol](https://github.com/rastafaninplakeibol).
+
+- [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB) can probably
+  do all the things that `rogauracore` can do.
