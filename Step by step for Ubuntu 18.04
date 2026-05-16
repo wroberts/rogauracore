@@ -1,0 +1,12 @@
+#Step by Step for Ubuntu 18.04 
+  1- Git clone using the following link "git clone https://github.com/wroberts/rogauracore.git"
+  2- sudo apt install libusb-1.0-0 libusb-1.0-0-dev 
+  3- cd rogauracore/
+  4- autoreconf -i
+  5- ./configure
+  6-  make
+  7- sudo make
+  8- Reboot
+  9- sudo rogauracore single_static ffffff (for Red static color you can select colors in Hex Form "https://htmlcolorcodes.com/")
+  10- sudo rogauracore single_static 000000 (To turn keybord off if figured that "sudo rogauracore brightness 0
+" dosn't work fro me )
